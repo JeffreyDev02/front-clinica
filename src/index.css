@@ -1,0 +1,57 @@
+@import './styles/theme.css';
+
+:root {
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Base button animations and styles */
+.btn-primary, .btn-secondary, .btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: var(--transition);
+}
+
+.btn-icon {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+.btn-icon:hover {
+  background: var(--background);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Badge common styles */
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 1.5rem;
+  }
+}
