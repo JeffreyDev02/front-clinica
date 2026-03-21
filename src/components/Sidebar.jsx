@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, UserRound, Calendar, LogOut, HeartPulse } from 'lucide-react';
+import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag } from 'lucide-react';
 
 const Sidebar = () => {
   const menuItems = [
@@ -8,6 +8,7 @@ const Sidebar = () => {
     { name: 'Pacientes', icon: <Users size={20} />, path: '/pacientes' },
     { name: 'Doctores', icon: <UserRound size={20} />, path: '/doctores' },
     { name: 'Citas', icon: <Calendar size={20} />, path: '/citas' },
+    { name: 'Especialidades', icon: <Tag size={20} />, path: '/especialidades' },
   ];
 
   return (

@@ -1,12 +1,107 @@
-import React from 'react';
-import { UserPlus, Search, Filter, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Search, Filter, MoreVertical, Edit2, Trash2, X, Save, Loader2 } from 'lucide-react';
+import { getPatients, createPatient, updatePatient, deletePatient } from '../services/patientService';
 
 const Patients = () => {
-  const patients = [
-    { id: '1', name: 'Juan Pérez', age: 45, gender: 'M', lastVisit: '10 Feb 2025', status: 'Activo' },
-    { id: '2', name: 'María García', age: 32, gender: 'F', lastVisit: '15 Feb 2025', status: 'Activo' },
-    { id: '3', name: 'Carlos López', age: 28, gender: 'M', lastVisit: '20 Feb 2025', status: 'Pendiente' },
-  ];
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPatient, setEditingPatient] = useState(null);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
+    fecha_nacimiento: '',
+    telefono: '',
+    direccion: ''
+  });
+
+  const fetchPatients = async () => {
+    try {
+      setLoading(true);
+      const data = await getPatients();
+      setPatients(data);
+      setError(null);
+    } catch (err) {
+      setError('Error al cargar los pacientes. Asegúrate de que la API está corriendo.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const handleOpenModal = (patient = null) => {
+    if (patient) {
+      setEditingPatient(patient);
+      setFormData({
+        nombre: patient.nombre,
+        apellido: patient.apellido,
+        fecha_nacimiento: patient.fecha_nacimiento ? patient.fecha_nacimiento.split('T')[0] : '',
+        telefono: patient.telefono,
+        direccion: patient.direccion
+      });
+    } else {
+      setEditingPatient(null);
+      setFormData({
+        nombre: '',
+        apellido: '',
+        fecha_nacimiento: '',
+        telefono: '',
+        direccion: ''
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingPatient(null);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingPatient) {
+        await updatePatient(editingPatient.id_paciente, formData);
+      } else {
+        await createPatient(formData);
+      }
+      handleCloseModal();
+      fetchPatients();
+    } catch (err) {
+      alert('Error al guardar el paciente');
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este paciente?')) {
+      try {
+        await deletePatient(id);
+        fetchPatients();
+      } catch (err) {
+        alert('Error al eliminar el paciente');
+        console.error(err);
+      }
+    }
+  };
+
+  const filteredPatients = patients.filter(p => 
+    `${p.nombre} ${p.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.id_paciente?.toString().includes(searchTerm)
+  );
 
   return (
     <div className="page-container">
@@ -15,7 +110,7 @@ const Patients = () => {
           <h1>Gestión de Pacientes</h1>
           <p>Visualiza y administra todos los registros de pacientes.</p>
         </div>
-        <button className="btn-primary">
+        <button className="btn-primary" onClick={() => handleOpenModal()}>
           <UserPlus size={18} />
           <span>Nuevo Paciente</span>
         </button>
@@ -24,7 +119,12 @@ const Patients = () => {
       <section className="table-controls glass">
         <div className="search-box">
           <Search size={18} />
-          <input type="text" placeholder="Buscar por nombre o ID..." />
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre o ID..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <button className="btn-icon">
           <Filter size={18} />
@@ -33,39 +133,141 @@ const Patients = () => {
       </section>
 
       <div className="table-responsive glass">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Edad</th>
-              <th>Género</th>
-              <th>Última Visita</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {patients.map((p) => (
-              <tr key={p.id}>
-                <td className="font-semibold">{p.name}</td>
-                <td>{p.age}</td>
-                <td>{p.gender}</td>
-                <td>{p.lastVisit}</td>
-                <td>
-                  <span className={`badge ${p.status.toLowerCase()}`}>
-                    {p.status}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn-ghost">
-                    <MoreVertical size={18} />
-                  </button>
-                </td>
+        {loading ? (
+          <div className="loading-state">
+            <Loader2 className="animate-spin" size={32} />
+            <p>Cargando pacientes...</p>
+          </div>
+        ) : error ? (
+          <div className="error-state">
+            <p>{error}</p>
+            <button className="btn-secondary" onClick={fetchPatients}>Reintentar</button>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Fecha Nacimiento</th>
+                <th>Teléfono</th>
+                <th>Dirección</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredPatients.length > 0 ? (
+                filteredPatients.map((p) => (
+                  <tr key={p.id_paciente}>
+                    <td>{p.id_paciente}</td>
+                    <td className="font-semibold">{p.nombre}</td>
+                    <td>{p.apellido}</td>
+                    <td>{p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString() : 'N/A'}</td>
+                    <td>{p.telefono}</td>
+                    <td>{p.direccion}</td>
+                    <td>
+                      <div className="actions-cell">
+                        <button className="btn-ghost edit" title="Editar" onClick={() => handleOpenModal(p)}>
+                          <Edit2 size={16} />
+                        </button>
+                        <button className="btn-ghost delete" title="Eliminar" onClick={() => handleDelete(p.id_paciente)}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
+                    No se encontraron pacientes.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
+
+      {/* Modal - Could be a separate component but for simplicity in this task we keep it here */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content glass">
+            <header className="modal-header">
+              <h2>{editingPatient ? 'Editar Paciente' : 'Nuevo Paciente'}</h2>
+              <button className="btn-close" onClick={handleCloseModal}>
+                <X size={20} />
+              </button>
+            </header>
+            <form onSubmit={handleSubmit} className="modal-form">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Nombre</label>
+                  <input 
+                    type="text" 
+                    name="nombre" 
+                    required 
+                    value={formData.nombre}
+                    onChange={handleInputChange}
+                    placeholder="Ej. Juan"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Apellido</label>
+                  <input 
+                    type="text" 
+                    name="apellido" 
+                    required 
+                    value={formData.apellido}
+                    onChange={handleInputChange}
+                    placeholder="Ej. Pérez"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Fecha de Nacimiento</label>
+                  <input 
+                    type="date" 
+                    name="fecha_nacimiento" 
+                    required 
+                    value={formData.fecha_nacimiento}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Teléfono</label>
+                  <input 
+                    type="tel" 
+                    name="telefono" 
+                    required 
+                    value={formData.telefono}
+                    onChange={handleInputChange}
+                    placeholder="Ej. 5555-5555"
+                  />
+                </div>
+                <div className="form-group full-width">
+                  <label>Dirección</label>
+                  <input 
+                    type="text" 
+                    name="direccion" 
+                    required 
+                    value={formData.direccion}
+                    onChange={handleInputChange}
+                    placeholder="Ej. Calle 123, Ciudad"
+                  />
+                </div>
+              </div>
+              <footer className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={handleCloseModal}>Cancelar</button>
+                <button type="submit" className="btn-primary">
+                  <Save size={18} />
+                  <span>{editingPatient ? 'Actualizar' : 'Guardar'}</span>
+                </button>
+              </footer>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{ __html: `
         .page-container {
@@ -102,7 +304,7 @@ const Patients = () => {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          background: var(--background);
+          background: var(--surface);
           padding: 0.5rem 1rem;
           border-radius: var(--radius);
           border: 1px solid var(--border);
@@ -114,11 +316,35 @@ const Patients = () => {
           outline: none;
           width: 100%;
           font-size: 0.9rem;
+          color: var(--text-main);
         }
 
         .table-responsive {
           border-radius: var(--radius);
           overflow: hidden;
+          min-height: 200px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .loading-state, .error-state {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1rem;
+          padding: 3rem;
+          color: var(--text-muted);
+        }
+
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         .data-table {
@@ -151,27 +377,182 @@ const Patients = () => {
           color: var(--text-main);
         }
 
-        .badge.activo {
-          background: rgba(34, 197, 94, 0.1);
-          color: #16a34a;
-        }
-
-        .badge.pendiente {
-          background: rgba(245, 158, 11, 0.1);
-          color: #d97706;
+        .actions-cell {
+          display: flex;
+          gap: 0.5rem;
         }
 
         .btn-ghost {
           background: none;
           color: var(--text-muted);
-          padding: 0.25rem;
-          border-radius: 4px;
+          padding: 0.5rem;
+          border-radius: 6px;
           transition: var(--transition);
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .btn-ghost:hover {
           background: var(--background);
+        }
+
+        .btn-ghost.edit:hover {
           color: var(--primary);
+        }
+
+        .btn-ghost.delete:hover {
+          color: #ef4444;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+
+        .modal-content {
+          width: 100%;
+          max-width: 600px;
+          border-radius: var(--radius);
+          overflow: hidden;
+          box-shadow: var(--shadow-lg);
+          background: var(--surface);
+          animation: modalSlideUp 0.3s ease-out;
+        }
+
+        @keyframes modalSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+          padding: 1.5rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .modal-header h2 {
+          font-size: 1.25rem;
+          font-weight: 700;
+        }
+
+        .btn-close {
+          background: none;
+          color: var(--text-muted);
+          transition: var(--transition);
+        }
+
+        .btn-close:hover {
+          color: var(--text-main);
+          transform: rotate(90deg);
+        }
+
+        .modal-form {
+          padding: 1.5rem;
+        }
+
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .full-width {
+          grid-column: span 2;
+        }
+
+        .form-group label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        .form-group input {
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          border: 1px solid var(--border);
+          background: var(--background);
+          color: var(--text-main);
+          outline: none;
+          transition: var(--transition);
+        }
+
+        .form-group input:focus {
+          border-color: var(--primary);
+          box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+        }
+
+        .modal-footer {
+          margin-top: 2rem;
+          display: flex;
+          justify-content: flex-end;
+          gap: 1rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid var(--border);
+        }
+
+        .btn-primary, .btn-secondary {
+          padding: 0.8rem 1.75rem;
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 0.925rem;
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          transition: var(--transition);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+          border: none;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, var(--primary), #0284c7);
+          color: white !important;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+          filter: brightness(1.1);
+        }
+
+        .btn-primary:active {
+          transform: translateY(0);
+        }
+
+        .btn-secondary {
+          background: white;
+          border: 1px solid var(--border);
+          color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+          background: var(--background);
+          border-color: var(--primary);
+          color: var(--primary);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
         }
       `}} />
     </div>
