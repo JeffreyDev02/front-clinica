@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, X, Save, Loader2, User, Stethoscope } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, X, Save, Loader2, User, Stethoscope, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment } from '../services/appointmentService';
 import { getPatients } from '../services/patientService';
 import { getDoctors } from '../services/doctorService';
 
 const Appointments = () => {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -227,12 +229,15 @@ const Appointments = () => {
                     </td>
                     <td>
                       <div className="actions-cell">
-                        <button className="btn-ghost edit" onClick={() => handleOpenModal(apt)}>
-                          <Edit2 size={16} />
-                        </button>
-                        <button className="btn-ghost delete" onClick={() => handleDelete(apt.id_cita)}>
-                          <Trash2 size={16} />
-                        </button>
+                          <button className="btn-ghost edit" onClick={() => handleOpenModal(apt)} title="Editar Cita">
+                            <Edit2 size={16} />
+                          </button>
+                          <button className="btn-ghost edit" onClick={() => navigate(`/consultas/nueva/${apt.id_cita}`)} title="Generar Consulta">
+                            <FileText size={16} />
+                          </button>
+                          <button className="btn-ghost delete" onClick={() => handleDelete(apt.id_cita)} title="Eliminar Cita">
+                            <Trash2 size={16} />
+                          </button>
                       </div>
                     </td>
                   </tr>

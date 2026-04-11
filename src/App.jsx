@@ -6,6 +6,8 @@ import Patients from './pages/Patients';
 import Doctors from './pages/Doctors';
 import Appointments from './pages/Appointments';
 import Specialties from './pages/Specialties';
+import Consultations from './pages/Consultations';
+import CreateConsultation from './pages/CreateConsultation';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
           <Route path="/doctores" element={<Doctors />} />
           <Route path="/citas" element={<Appointments />} />
           <Route path="/especialidades" element={<Specialties />} />
+          <Route path="/consultas" element={<Consultations />} />
+          <Route path="/consultas/nueva/:idCita" element={<CreateConsultation />} />
         </Routes>
       </MainLayout>
     </Router>
