@@ -1,8 +1,16 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag, ClipboardList } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag, ClipboardList, BarChart2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    signOut();
+    navigate('/login');
+  };
   const menuItems = [
     { name: 'Inicio', icon: <Home size={20} />, path: '/' },
     { name: 'Pacientes', icon: <Users size={20} />, path: '/pacientes' },
@@ -10,6 +18,7 @@ const Sidebar = () => {
     { name: 'Citas', icon: <Calendar size={20} />, path: '/citas' },
     { name: 'Especialidades', icon: <Tag size={20} />, path: '/especialidades' },
     { name: 'Consultas', icon: <ClipboardList size={20} />, path: '/consultas' },
+    { name: 'Reportes', icon: <BarChart2 size={20} />, path: '/reportes' },
   ];
 
   return (
@@ -36,7 +45,7 @@ const Sidebar = () => {
       </nav>
 
       <div className="sidebar-footer">
-        <button className="logout-btn">
+        <button className="logout-btn" onClick={handleLogout}>
           <LogOut size={20} />
           <span>Cerrar Sesión</span>
         </button>

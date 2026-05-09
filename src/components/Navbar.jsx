@@ -1,17 +1,16 @@
 import React from 'react';
-import { Search, Bell, User, Menu } from 'lucide-react';
+import { Bell, User, Menu } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = ({ toggleSidebar }) => {
+  const { user } = useAuth();
+  const rolLabel = { admin: 'Administrador', medico: 'Médico', recepcion: 'Recepcionista' };
   return (
     <nav className="navbar glass">
       <div className="navbar-left">
         <button className="menu-toggle" onClick={toggleSidebar}>
           <Menu size={24} />
         </button>
-        <div className="search-bar">
-          <Search size={18} className="search-icon" />
-          <input type="text" placeholder="Buscar pacientes, doctores..." />
-        </div>
       </div>
       
       <div className="navbar-right">
@@ -21,8 +20,8 @@ const Navbar = ({ toggleSidebar }) => {
         </button>
         <div className="user-profile">
           <div className="user-info">
-            <span className="user-name">Admin</span>
-            <span className="user-role">Gestor Médico</span>
+            <span className="user-name">{user?.nombre || 'Admin'}</span>
+            <span className="user-role">{rolLabel[user?.rol] || 'Gestor Médico'}</span>
           </div>
           <div className="user-avatar">
             <User size={20} />

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, FileDown, Eye, Search, ClipboardList, User, Calendar, Hash } from 'lucide-react';
-import { getConsultas } from '../services/consultaService';
+import { getConsultas, getConsultaById } from '../services/consultaService';
 import { getAppointments } from '../services/appointmentService';
 import { getPatients } from '../services/patientService';
 import { getMedicamentos } from '../services/medicamentoService';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const Consultations = () => {
     const [consultas, setConsultas] = useState([]);
@@ -137,15 +137,12 @@ const Consultations = () => {
             doc.setFont('helvetica', 'bold');
             doc.text('Receta de Medicamentos:', 20, TableY - 5);
 
-            const tableData = medsArray.map(m => {
-                const medInfo = contextData.medicamentos.find(med => med.id_medicamento == (m.id_medicamento || m.id));
-                return [
-                    medInfo ? medInfo.nombre : (m.nombre || `ID: ${m.id_medicamento || m.id}`),
-                    m.dosis || m.instrucciones || 'N/A'
-                ];
-            });
+            const tableData = medsArray.map(m => [
+                m.nombre || (contextData.medicamentos.find(med => med.id_medicamento == m.id_medicamento)?.nombre) || `ID: ${m.id_medicamento}`,
+                m.dosis || 'N/A'
+            ]);
 
-            doc.autoTable({
+        autoTable(doc, {
                 startY: TableY,
                 head: [['Medicamento', 'Dosis e Instrucciones']],
                 body: tableData,
@@ -161,7 +158,7 @@ const Consultations = () => {
         }
 
         // Footer / Signature
-        const finalY = doc.previousAutoTable ? doc.previousAutoTable.finalY + 30 : TableY + 40;
+        const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 30 : TableY + 40;
         const pageHeight = doc.internal.pageSize.height;
         let signatureY = finalY;
         if (signatureY > pageHeight - 30) {

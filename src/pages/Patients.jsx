@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Search, Filter, MoreVertical, Edit2, Trash2, X, Save, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { UserPlus, Search, Filter, MoreVertical, Edit2, Trash2, X, Save, Loader2, FileDown, FolderOpen } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../services/patientService';
 
 const Patients = () => {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,6 +107,36 @@ const Patients = () => {
     p.id_paciente?.toString().includes(searchTerm)
   );
 
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MediConnect — Reporte de Pacientes', 15, 22);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generado: ${new Date().toLocaleString()} · Total: ${filteredPatients.length}`, 15, 30);
+    doc.setTextColor(30, 41, 59);
+    autoTable(doc, {
+      startY: 42,
+      head: [['ID', 'Nombre', 'Apellido', 'Fecha Nacimiento', 'Teléfono', 'Dirección']],
+      body: filteredPatients.map(p => [
+        p.id_paciente,
+        p.nombre,
+        p.apellido,
+        p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString() : 'N/A',
+        p.telefono || '—',
+        p.direccion || '—',
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 9 },
+    });
+    doc.save(`pacientes_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   return (
     <div className="page-container">
       <header className="page-header">
@@ -113,6 +147,10 @@ const Patients = () => {
         <button className="btn-primary" onClick={() => handleOpenModal()}>
           <UserPlus size={18} />
           <span>Nuevo Paciente</span>
+        </button>
+        <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <FileDown size={18} />
+          <span>Exportar PDF</span>
         </button>
       </header>
 
@@ -168,6 +206,9 @@ const Patients = () => {
                     <td>{p.direccion}</td>
                     <td>
                       <div className="actions-cell">
+                        <button className="btn-ghost" title="Ver Expediente" onClick={() => navigate(`/expediente/${p.id_paciente}`)} style={{ color: '#0ea5e9' }}>
+                          <FolderOpen size={16} />
+                        </button>
                         <button className="btn-ghost edit" title="Editar" onClick={() => handleOpenModal(p)}>
                           <Edit2 size={16} />
                         </button>

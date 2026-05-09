@@ -1,13 +1,38 @@
-import React from 'react';
-import { ShieldCheck, Clock, Users, CalendarCheck, TrendingUp, Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, Clock, Users, CalendarCheck, TrendingUp, Activity, Loader2, UserRound } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+const API = 'http://localhost:3000/api/reportes/home-stats';
+
+const ESTADO_STYLE = {
+    Normal:     { bg: 'rgba(14,165,233,0.1)',  color: '#0ea5e9' },
+    Urgente:    { bg: 'rgba(239,68,68,0.1)',   color: '#ef4444' },
+    Confirmada: { bg: 'rgba(34,197,94,0.1)',   color: '#16a34a' },
+    Pendiente:  { bg: 'rgba(245,158,11,0.1)',  color: '#d97706' },
+};
 
 const Home = () => {
-  const stats = [
-    { label: 'Citas de hoy', value: '24', icon: <CalendarCheck size={24} />, color: '#0ea5e9' },
-    { label: 'Nuevos pacientes', value: '12', icon: <Users size={24} />, color: '#2dd4bf' },
-    { label: 'Doctores activos', value: '8', icon: <TrendingUp size={24} />, color: '#8b5cf6' },
-    { label: 'Eficiencia', value: '98%', icon: <Activity size={24} />, color: '#f59e0b' },
-  ];
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch(API)
+      .then(r => r.json())
+      .then(data => { setStats(data); setLoading(false); })
+      .catch(() => { setError('No se pudo conectar con el servidor.'); setLoading(false); });
+  }, []);
+
+  const statCards = stats ? [
+    { label: 'Citas de hoy',      value: stats.citas_hoy,       icon: <CalendarCheck size={24} />, color: '#0ea5e9' },
+    { label: 'Total pacientes',   value: stats.total_pacientes,  icon: <Users size={24} />,         color: '#2dd4bf' },
+    { label: 'Doctores activos',  value: stats.total_medicos,    icon: <UserRound size={24} />,     color: '#8b5cf6' },
+    { label: 'Citas activas',     value: stats.citas_activas,    icon: <Activity size={24} />,      color: '#f59e0b' },
+  ] : [];
 
   return (
     <div className="home-page">
@@ -17,11 +42,11 @@ const Home = () => {
             <ShieldCheck size={16} />
             <span>Sistema Médico Certificado</span>
           </div>
-          <h1>Bienvenido a <span>MediConnect</span></h1>
+          <h1>Bienvenido{user?.nombre ? `, ${user.nombre}` : ''} a <span>MediConnect</span></h1>
           <p>Gestiona tu clínica con eficiencia, simplicidad y tecnología de vanguardia. Todo lo que necesitas para cuidar a tus pacientes en un solo lugar.</p>
           <div className="hero-actions">
-            <button className="btn-primary">Nueva Cita</button>
-            <button className="btn-secondary">Ver Reportes</button>
+            <button className="btn-primary" onClick={() => navigate('/citas')}>Nueva Cita</button>
+            <button className="btn-secondary" onClick={() => navigate('/reportes')}>Ver Reportes</button>
           </div>
         </div>
         <div className="hero-visual">
@@ -30,41 +55,64 @@ const Home = () => {
       </header>
 
       <section className="stats-grid">
-        {stats.map((stat, i) => (
-          <div key={i} className="stat-card glass">
-            <div className="stat-icon" style={{ backgroundColor: `${stat.color}15`, color: stat.color }}>
-              {stat.icon}
-            </div>
-            <div className="stat-info">
-              <h3>{stat.value}</h3>
-              <p>{stat.label}</p>
-            </div>
-          </div>
-        ))}
+        {loading
+          ? [1,2,3,4].map(i => (
+              <div key={i} className="stat-card glass" style={{ justifyContent: 'center', minHeight: 80 }}>
+                <Loader2 size={22} style={{ animation: 'spin 1s linear infinite', color: '#0ea5e9' }} />
+              </div>
+            ))
+          : statCards.map((stat, i) => (
+              <div key={i} className="stat-card glass">
+                <div className="stat-icon" style={{ backgroundColor: `${stat.color}15`, color: stat.color }}>
+                  {stat.icon}
+                </div>
+                <div className="stat-info">
+                  <h3>{stat.value ?? '—'}</h3>
+                  <p>{stat.label}</p>
+                </div>
+              </div>
+            ))
+        }
       </section>
 
       <div className="dashboard-content">
         <div className="content-card glass">
           <h2>Próximas Citas</h2>
-          <div className="appointment-list">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="appointment-item">
-                <div className="time">
-                  <Clock size={16} />
-                  <span>09:30 AM</span>
-                </div>
-                <div className="patient">
-                  <strong>Juan Pérez</strong>
-                  <span>Cardiología</span>
-                </div>
-                <span className="status confirmed">Confirmada</span>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div style={{ display:'flex', justifyContent:'center', padding:'2rem' }}>
+              <Loader2 size={28} style={{ animation:'spin 1s linear infinite', color:'#0ea5e9' }} />
+            </div>
+          ) : error ? (
+            <p style={{ color: '#ef4444' }}>{error}</p>
+          ) : stats?.proximas_citas?.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', padding: '0.5rem 0' }}>No hay próximas citas programadas.</p>
+          ) : (
+            <div className="appointment-list">
+              {(stats?.proximas_citas || []).map((cita) => {
+                const style = ESTADO_STYLE[cita.estado] || ESTADO_STYLE['Normal'];
+                return (
+                  <div key={cita.id_cita} className="appointment-item">
+                    <div className="time">
+                      <Clock size={16} />
+                      <span>{cita.hora ? cita.hora.slice(0,5) : '—'}</span>
+                    </div>
+                    <div className="patient">
+                      <strong>{cita.paciente}</strong>
+                      <span>{cita.especialidad || cita.medico}</span>
+                    </div>
+                    <span className="status" style={{ background: style.bg, color: style.color }}>
+                      {cita.estado}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes spin { to { transform: rotate(360deg); } }
         .home-page {
           display: flex;
           flex-direction: column;
@@ -136,6 +184,8 @@ const Home = () => {
           font-weight: 600;
           box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
           transition: var(--transition);
+          cursor: pointer;
+          border: none;
         }
 
         .btn-primary:hover {
@@ -150,6 +200,8 @@ const Home = () => {
           border-radius: var(--radius);
           font-weight: 600;
           transition: var(--transition);
+          cursor: pointer;
+          border: 1px solid var(--border);
         }
 
         .btn-secondary:hover {
@@ -204,6 +256,7 @@ const Home = () => {
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
         }
 
         .stat-info h3 {
@@ -286,18 +339,9 @@ const Home = () => {
           border-radius: 50px;
         }
 
-        .status.confirmed {
-          background: rgba(34, 197, 94, 0.1);
-          color: #16a34a;
-        }
-
         @media (max-width: 992px) {
-          .hero-section {
-            padding: 2rem;
-          }
-          .hero-visual {
-            display: none;
-          }
+          .hero-section { padding: 2rem; }
+          .hero-visual { display: none; }
         }
       `}} />
     </div>

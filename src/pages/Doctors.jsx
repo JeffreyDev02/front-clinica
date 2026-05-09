@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Stethoscope, Star, Mail, Edit2, Trash2, X, Save, Loader2, Phone } from 'lucide-react';
+import { UserPlus, Stethoscope, Star, Mail, Edit2, Trash2, X, Save, Loader2, Phone, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getDoctors, createDoctor, updateDoctor, deleteDoctor } from '../services/doctorService';
 
 const Doctors = () => {
@@ -91,6 +93,28 @@ const Doctors = () => {
     }
   };
 
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MediConnect \u2014 Equipo M\u00e9dico', 15, 22);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generado: ${new Date().toLocaleString()} \u00b7 Total: ${doctors.length}`, 15, 30);
+    doc.setTextColor(30, 41, 59);
+    autoTable(doc, {
+      startY: 42,
+      head: [['ID', 'Nombre', 'Apellido', 'Tel\u00e9fono']],
+      body: doctors.map(d => [d.id_medico, d.nombre, d.apellido, d.telefono || '\u2014']),
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+    });
+    doc.save(`medicos_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   return (
     <div className="page-container">
       <header className="page-header">
@@ -101,8 +125,10 @@ const Doctors = () => {
         <button className="btn-primary" onClick={() => handleOpenModal()}>
           <UserPlus size={18} />
           <span>Añadir Doctor</span>
-        </button>
-      </header>
+        </button>        <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <FileDown size={18} />
+          <span>Exportar PDF</span>
+        </button>      </header>
 
       {loading ? (
         <div className="loading-state glass">

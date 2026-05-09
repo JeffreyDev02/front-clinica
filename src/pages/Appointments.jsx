@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, X, Save, Loader2, User, Stethoscope, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, X, Save, Loader2, User, Stethoscope, FileText, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment } from '../services/appointmentService';
 import { getPatients } from '../services/patientService';
@@ -147,6 +149,36 @@ const Appointments = () => {
     return doctor ? `${doctor.nombre} ${doctor.apellido}` : 'Desconocido';
   };
 
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MediConnect \u2014 Reporte de Citas', 15, 22);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generado: ${new Date().toLocaleString()} \u00b7 Total: ${appointments.length}`, 15, 30);
+    doc.setTextColor(30, 41, 59);
+    autoTable(doc, {
+      startY: 42,
+      head: [['#', 'Paciente', 'M\u00e9dico', 'Fecha', 'Hora', 'Estado']],
+      body: appointments.map((a, i) => [
+        i + 1,
+        getPatientName(a.id_paciente),
+        getDoctorName(a.id_medico),
+        a.fecha ? new Date(a.fecha).toLocaleDateString() : '\u2014',
+        a.hora || '\u2014',
+        a.estado || '\u2014',
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 8 },
+    });
+    doc.save(`citas_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   return (
     <div className="page-container">
       <header className="page-header">
@@ -172,6 +204,10 @@ const Appointments = () => {
           <button className="btn-primary" onClick={() => handleOpenModal()}>
             <Plus size={18} />
             <span>Agendar Cita</span>
+          </button>
+          <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <FileDown size={18} />
+            <span>Exportar PDF</span>
           </button>
         </div>
       </header>

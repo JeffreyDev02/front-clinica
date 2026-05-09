@@ -161,6 +161,7 @@ const CreateConsultation = () => {
                                     placeholder="Escriba el diagnóstico detallado..."
                                     value={formData.diagnostico}
                                     onChange={handleInputChange}
+                                    style={{ color: '#0f172a', background: '#fff' }}
                                 />
                             </div>
                             <div className="form-group">
@@ -172,6 +173,7 @@ const CreateConsultation = () => {
                                     placeholder="Indique el tratamiento y recomendaciones generales..."
                                     value={formData.tratamiento}
                                     onChange={handleInputChange}
+                                    style={{ color: '#0f172a', background: '#fff' }}
                                 />
                             </div>
                         </section>
@@ -206,6 +208,7 @@ const CreateConsultation = () => {
                                                     placeholder="Ej: 500mg cada 8 horas"
                                                     value={med.dosis}
                                                     onChange={(e) => handleMedChange(index, 'dosis', e.target.value)}
+                                                    style={{ color: '#0f172a', background: '#fff' }}
                                                 />
                                             </div>
                                         </div>
