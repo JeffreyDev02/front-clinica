@@ -1,9 +1,17 @@
 import React from 'react';
-import { Bell, User, Menu } from 'lucide-react';
+import { Bell, User, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Navbar = ({ toggleSidebar }) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    signOut();
+    navigate('/login');
+  };
+
   const rolLabel = { admin: 'Administrador', medico: 'Médico', recepcion: 'Recepcionista' };
   return (
     <nav className="navbar glass">
@@ -12,11 +20,11 @@ const Navbar = ({ toggleSidebar }) => {
           <Menu size={24} />
         </button>
       </div>
-      
+
       <div className="navbar-right">
-        <button className="nav-icon-btn">
-          <Bell size={20} />
-          <span className="badge"></span>
+
+        <button className="nav-icon-btn" onClick={handleLogout} title="Cerrar Sesión">
+          <LogOut size={20} />
         </button>
         <div className="user-profile">
           <div className="user-info">
@@ -29,7 +37,8 @@ const Navbar = ({ toggleSidebar }) => {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .navbar {
           height: var(--navbar-height);
           width: 100%;

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import MainLayout from './components/MainLayout';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Home from './pages/Home';
 import Patients from './pages/Patients';
 import Doctors from './pages/Doctors';
@@ -12,6 +13,9 @@ import Consultations from './pages/Consultations';
 import CreateConsultation from './pages/CreateConsultation';
 import Reports from './pages/Reports';
 import Expediente from './pages/Expediente';
+import Facturacion from './pages/Facturacion';
+import CreateFactura from './pages/CreateFactura';
+import ViewFactura from './pages/ViewFactura';
 
 const ProtectedLayout = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -23,6 +27,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/" element={<ProtectedLayout><Home /></ProtectedLayout>} />
       <Route path="/pacientes" element={<ProtectedLayout><Patients /></ProtectedLayout>} />
       <Route path="/doctores" element={<ProtectedLayout><Doctors /></ProtectedLayout>} />
@@ -30,6 +35,9 @@ function AppRoutes() {
       <Route path="/especialidades" element={<ProtectedLayout><Specialties /></ProtectedLayout>} />
       <Route path="/consultas" element={<ProtectedLayout><Consultations /></ProtectedLayout>} />
       <Route path="/consultas/nueva/:idCita" element={<ProtectedLayout><CreateConsultation /></ProtectedLayout>} />
+      <Route path="/facturacion" element={<ProtectedLayout><Facturacion /></ProtectedLayout>} />
+      <Route path="/facturacion/nueva" element={<ProtectedLayout><CreateFactura /></ProtectedLayout>} />
+      <Route path="/facturacion/:id" element={<ProtectedLayout><ViewFactura /></ProtectedLayout>} />
       <Route path="/reportes" element={<ProtectedLayout><Reports /></ProtectedLayout>} />
       <Route path="/expediente/:id" element={<ProtectedLayout><Expediente /></ProtectedLayout>} />
       <Route path="*" element={<Navigate to="/" replace />} />

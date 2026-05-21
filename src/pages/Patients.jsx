@@ -22,6 +22,57 @@ const Patients = () => {
     telefono: '',
     direccion: ''
   });
+  const [formErrors, setFormErrors] = useState({});
+
+  const validateForm = () => {
+    const errors = {};
+    const namePattern = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]{2,}$/;
+    const phonePattern = /^[0-9+\s()\-]{7,20}$/;
+    const today = new Date();
+    const birthDate = formData.fecha_nacimiento ? new Date(formData.fecha_nacimiento) : null;
+
+    if (!formData.nombre.trim()) {
+      errors.nombre = 'El nombre es obligatorio.';
+    } else if (!namePattern.test(formData.nombre.trim())) {
+      errors.nombre = 'Ingresa un nombre válido (solo letras y espacios).';
+    }
+
+    if (!formData.apellido.trim()) {
+      errors.apellido = 'El apellido es obligatorio.';
+    } else if (!namePattern.test(formData.apellido.trim())) {
+      errors.apellido = 'Ingresa un apellido válido (solo letras y espacios).';
+    }
+
+    if (!formData.fecha_nacimiento) {
+      errors.fecha_nacimiento = 'La fecha de nacimiento es obligatoria.';
+    } else if (!(birthDate instanceof Date) || Number.isNaN(birthDate.getTime())) {
+      errors.fecha_nacimiento = 'Fecha de nacimiento no válida.';
+    } else if (birthDate > today) {
+      errors.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura.';
+    } else {
+      const age = Math.floor((today - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
+      if (age < 1) {
+        errors.fecha_nacimiento = 'El paciente debe tener al menos 1 año.';
+      } else if (age > 120) {
+        errors.fecha_nacimiento = 'Ingresa una fecha de nacimiento válida.';
+      }
+    }
+
+    if (!formData.telefono.trim()) {
+      errors.telefono = 'El teléfono es obligatorio.';
+    } else if (!/^\d{8}$/.test(formData.telefono.trim())) {
+      errors.telefono = 'El teléfono debe contener exactamente 8 dígitos.';
+    }
+
+    if (!formData.direccion.trim()) {
+      errors.direccion = 'La dirección es obligatoria.';
+    } else if (formData.direccion.trim().length < 5) {
+      errors.direccion = 'La dirección debe tener al menos 5 caracteres.';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const fetchPatients = async () => {
     try {
@@ -76,6 +127,8 @@ const Patients = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     try {
       if (editingPatient) {
         await updatePatient(editingPatient.id_paciente, formData);
@@ -248,54 +301,60 @@ const Patients = () => {
                   <input 
                     type="text" 
                     name="nombre" 
-                    required 
                     value={formData.nombre}
                     onChange={handleInputChange}
                     placeholder="Ej. Juan"
+                    aria-invalid={!!formErrors.nombre}
                   />
+                  {formErrors.nombre && <span className="field-error">{formErrors.nombre}</span>}
                 </div>
                 <div className="form-group">
                   <label>Apellido</label>
                   <input 
                     type="text" 
                     name="apellido" 
-                    required 
                     value={formData.apellido}
                     onChange={handleInputChange}
                     placeholder="Ej. Pérez"
+                    aria-invalid={!!formErrors.apellido}
                   />
+                  {formErrors.apellido && <span className="field-error">{formErrors.apellido}</span>}
                 </div>
                 <div className="form-group">
                   <label>Fecha de Nacimiento</label>
                   <input 
                     type="date" 
                     name="fecha_nacimiento" 
-                    required 
                     value={formData.fecha_nacimiento}
                     onChange={handleInputChange}
+                    aria-invalid={!!formErrors.fecha_nacimiento}
                   />
+                  {formErrors.fecha_nacimiento && <span className="field-error">{formErrors.fecha_nacimiento}</span>}
                 </div>
                 <div className="form-group">
                   <label>Teléfono</label>
                   <input 
                     type="tel" 
                     name="telefono" 
-                    required 
                     value={formData.telefono}
                     onChange={handleInputChange}
-                    placeholder="Ej. 5555-5555"
+                    placeholder="Ej. 12345678"
+                    maxLength={8}
+                    aria-invalid={!!formErrors.telefono}
                   />
+                  {formErrors.telefono && <span className="field-error">{formErrors.telefono}</span>}
                 </div>
                 <div className="form-group full-width">
                   <label>Dirección</label>
                   <input 
                     type="text" 
                     name="direccion" 
-                    required 
                     value={formData.direccion}
                     onChange={handleInputChange}
                     placeholder="Ej. Calle 123, Ciudad"
+                    aria-invalid={!!formErrors.direccion}
                   />
+                  {formErrors.direccion && <span className="field-error">{formErrors.direccion}</span>}
                 </div>
               </div>
               <footer className="modal-footer">
@@ -594,6 +653,16 @@ const Patients = () => {
           color: var(--primary);
           transform: translateY(-2px);
           box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .field-error {
+          color: #dc2626;
+          font-size: 0.825rem;
+          margin-top: 0.25rem;
+        }
+
+        .form-group input[aria-invalid="true"] {
+          border-color: #dc2626;
         }
       `}} />
     </div>

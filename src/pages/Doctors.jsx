@@ -2,21 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, Stethoscope, Star, Mail, Edit2, Trash2, X, Save, Loader2, Phone, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getDoctors, createDoctor, updateDoctor, deleteDoctor } from '../services/doctorService';
+import { getDoctors, createDoctor, updateDoctor, deleteDoctor, assignDoctorSpecialty, removeDoctorSpecialty, getDoctorSpecialties } from '../services/doctorService';
+import { getSpecialties } from '../services/specialtyService';
 
 const Doctors = () => {
   const [doctors, setDoctors] = useState([]);
+  const [specialties, setSpecialties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState(null);
+  const [originalSpecialtyIds, setOriginalSpecialtyIds] = useState([]);
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
-    telefono: ''
+    telefono: '',
+    especialidades: []
   });
+  const [successMessage, setSuccessMessage] = useState('');
+  const [formErrors, setFormErrors] = useState({});
+
+  const fetchSpecialties = async () => {
+    try {
+      const data = await getSpecialties();
+      setSpecialties(data);
+    } catch (err) {
+      console.error('Error al cargar especialidades', err);
+    }
+  };
 
   const fetchDoctors = async () => {
     try {
@@ -34,22 +47,52 @@ const Doctors = () => {
 
   useEffect(() => {
     fetchDoctors();
+    fetchSpecialties();
   }, []);
+
+  const getSpecialtyName = (id) => {
+    const s = specialties.find(sp => (sp.id_especialidad || sp.id || '').toString() === id?.toString());
+    return s ? (s.nombre || s.nombre_especialidad || id) : id;
+  };
 
   const handleOpenModal = (doctor = null) => {
     if (doctor) {
       setEditingDoctor(doctor);
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         nombre: doctor.nombre,
         apellido: doctor.apellido,
-        telefono: doctor.telefono
-      });
+        telefono: doctor.telefono,
+      }));
+
+      // derive specialties from doctor object; if missing, fetch from API
+      (async () => {
+        try {
+          let selectedSpecialties = [];
+          if (Array.isArray(doctor.especialidades) && doctor.especialidades.length > 0) {
+            selectedSpecialties = doctor.especialidades.map(s => (s.id_especialidad?.toString() || s.id?.toString() || s.toString()));
+          } else {
+            const data = await getDoctorSpecialties(doctor.id_medico || doctor.id);
+            if (Array.isArray(data)) {
+              selectedSpecialties = data.map(s => (s.id_especialidad?.toString() || s.id?.toString() || s.toString()));
+            }
+          }
+          setOriginalSpecialtyIds(selectedSpecialties);
+          setFormData(prev => ({ ...prev, especialidades: selectedSpecialties }));
+        } catch (err) {
+          console.error('Error al obtener especialidades del doctor', err);
+          setOriginalSpecialtyIds([]);
+          setFormData(prev => ({ ...prev, especialidades: [] }));
+        }
+      })();
     } else {
       setEditingDoctor(null);
+      setOriginalSpecialtyIds([]);
       setFormData({
         nombre: '',
         apellido: '',
-        telefono: ''
+        telefono: '',
+        especialidades: []
       });
     }
     setIsModalOpen(true);
@@ -58,21 +101,102 @@ const Doctors = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingDoctor(null);
+    setOriginalSpecialtyIds([]);
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, selectedOptions } = e.target;
+    if (name === 'especialidades') {
+      // kept for potential non-checkbox inputs, but handled elsewhere
+      const values = selectedOptions ? Array.from(selectedOptions, option => option.value) : [];
+      setFormData(prev => ({ ...prev, especialidades: values }));
+      return;
+    }
+    if (name === 'telefono') {
+      // allow only digits and limit to 8 characters
+      const digits = value.replace(/\D/g, '').slice(0, 8);
+      setFormData(prev => ({ ...prev, telefono: digits }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    const namePattern = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s'-]+$/;
+    if (!formData.nombre || formData.nombre.trim().length < 2 || !namePattern.test(formData.nombre.trim())) {
+      errors.nombre = 'Nombre inválido (solo letras, mínimo 2 caracteres)';
+    }
+    if (!formData.apellido || formData.apellido.trim().length < 2 || !namePattern.test(formData.apellido.trim())) {
+      errors.apellido = 'Apellido inválido (solo letras, mínimo 2 caracteres)';
+    }
+    if (!formData.telefono || !/^\d{8}$/.test(formData.telefono)) {
+      errors.telefono = 'Teléfono inválido (debe tener exactamente 8 dígitos)';
+    }
+    if (!Array.isArray(formData.especialidades) || formData.especialidades.length < 1) {
+      errors.especialidades = 'Selecciona al menos una especialidad';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSpecialtyToggle = (e) => {
+    const { value, checked } = e.target;
+    setFormData(prev => {
+      const current = Array.isArray(prev.especialidades) ? [...prev.especialidades] : [];
+      if (checked) {
+        if (!current.includes(value)) current.push(value);
+      } else {
+        const idx = current.indexOf(value);
+        if (idx > -1) current.splice(idx, 1);
+      }
+      return { ...prev, especialidades: current };
+    });
+  };
+
+  const syncDoctorSpecialties = async (doctorId, selectedIds, originalIds) => {
+    const uniqueSelected = Array.from(new Set(selectedIds));
+    const uniqueOriginal = Array.from(new Set(originalIds));
+
+    const toAdd = uniqueSelected.filter(id => !uniqueOriginal.includes(id));
+    const toRemove = uniqueOriginal.filter(id => !uniqueSelected.includes(id));
+
+    const medId = parseInt(doctorId, 10);
+    await Promise.all(toAdd.map(id => assignDoctorSpecialty(medId, parseInt(id, 10))));
+    await Promise.all(toRemove.map(id => removeDoctorSpecialty(medId, parseInt(id, 10))));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     try {
+      const doctorPayload = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        telefono: formData.telefono,
+      };
+
+      let savedDoctor;
+      let doctorId = null;
       if (editingDoctor) {
-        await updateDoctor(editingDoctor.id_medico, formData);
+        savedDoctor = await updateDoctor(editingDoctor.id_medico, doctorPayload);
+        doctorId = editingDoctor.id_medico;
       } else {
-        await createDoctor(formData);
+        savedDoctor = await createDoctor(doctorPayload);
+        // backend may return different id fields; try common ones
+        doctorId = savedDoctor?.id_medico || savedDoctor?.id || savedDoctor?.insertId || null;
       }
+
+      if (doctorId) {
+        await syncDoctorSpecialties(doctorId, formData.especialidades, originalSpecialtyIds);
+      } else {
+        console.warn('No se obtuvo id del doctor creado/actualizado, no se sincronizaron especialidades', savedDoctor);
+      }
+
+      // show success message
+      setSuccessMessage(editingDoctor ? 'Doctor actualizado correctamente' : 'Doctor creado correctamente');
+      setTimeout(() => setSuccessMessage(''), 4000);
+
       handleCloseModal();
       fetchDoctors();
     } catch (err) {
@@ -122,6 +246,9 @@ const Doctors = () => {
           <h1>Nuestro Equipo Médico</h1>
           <p>Gestiona los perfiles y especialidades de los doctores.</p>
         </div>
+        {successMessage && (
+          <div className="success-alert" role="status">{successMessage}</div>
+        )}
         <button className="btn-primary" onClick={() => handleOpenModal()}>
           <UserPlus size={18} />
           <span>Añadir Doctor</span>
@@ -150,7 +277,19 @@ const Doctors = () => {
               </div>
               <div className="doctor-info">
                 <h3>{doc.nombre} {doc.apellido}</h3>
-                <p className="specialty">Médico General</p>
+                <div className="specialty-list">
+                  {Array.isArray(doc.especialidades) && doc.especialidades.length > 0 ? (
+                    doc.especialidades.map((s, idx) => {
+                      const id = (s.id_especialidad || s.id || s).toString();
+                      const name = s.nombre || s.nombre_especialidad || getSpecialtyName(id);
+                      return (
+                        <span key={idx} className="spec-badge">{name}</span>
+                      );
+                    })
+                  ) : (
+                    <span className="spec-badge muted">Médico General</span>
+                  )}
+                </div>
                 <div className="contact">
                   <Phone size={14} />
                   <span>{doc.telefono}</span>
@@ -195,33 +334,66 @@ const Doctors = () => {
                   <input 
                     type="text" 
                     name="nombre" 
-                    required 
                     value={formData.nombre}
                     onChange={handleInputChange}
                     placeholder="Ej. Alejandro"
+                    aria-invalid={!!formErrors.nombre}
                   />
+                  {formErrors.nombre && <span className="field-error">{formErrors.nombre}</span>}
                 </div>
                 <div className="form-group">
                   <label>Apellido</label>
                   <input 
                     type="text" 
                     name="apellido" 
-                    required 
                     value={formData.apellido}
                     onChange={handleInputChange}
                     placeholder="Ej. Silva"
+                    aria-invalid={!!formErrors.apellido}
                   />
+                  {formErrors.apellido && <span className="field-error">{formErrors.apellido}</span>}
+                </div>
+                <div className="form-group full-width">
+                  <label>Especialidades</label>
+                  <div style={{ margin: '0.5rem 0 0 0', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {Array.isArray(formData.especialidades) && formData.especialidades.length > 0 ? (
+                      formData.especialidades.map(id => (
+                        <span key={id} className="spec-badge selected">{getSpecialtyName(id)}</span>
+                      ))
+                    ) : (
+                      <span className="spec-badge muted">Ninguna seleccionada</span>
+                    )}
+                  </div>
+                  {formErrors.especialidades && <span className="field-error">{formErrors.especialidades}</span>}
+                  <div className="checkbox-grid" style={{ minHeight: '8rem', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)', marginTop: '0.6rem' }}>
+                    {specialties.map(spec => {
+                      const id = (spec.id_especialidad || spec.id || '').toString();
+                      return (
+                        <label key={id} className="checkbox-item">
+                          <input
+                            type="checkbox"
+                            name="especialidades"
+                            value={id}
+                            checked={Array.isArray(formData.especialidades) && formData.especialidades.includes(id)}
+                            onChange={handleSpecialtyToggle}
+                          />
+                          <span className="checkbox-label">{spec.nombre || spec.nombre_especialidad || 'Sin nombre'}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="form-group full-width">
                   <label>Teléfono</label>
                   <input 
                     type="tel" 
                     name="telefono" 
-                    required 
                     value={formData.telefono}
                     onChange={handleInputChange}
                     placeholder="Ej. 5555-5555"
+                    aria-invalid={!!formErrors.telefono}
                   />
+                  {formErrors.telefono && <span className="field-error">{formErrors.telefono}</span>}
                 </div>
               </div>
               <footer className="modal-footer">
@@ -440,23 +612,23 @@ const Doctors = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          backdrop-filter: blur(4px);
+          background: rgba(0, 0, 0, 0.45);
+          backdrop-filter: blur(3px);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 1000;
-          padding: 1rem;
+          padding: 0.5rem;
         }
 
         .modal-content {
           width: 100%;
-          max-width: 500px;
+          max-width: 680px;
           border-radius: var(--radius);
           overflow: hidden;
           box-shadow: var(--shadow-lg);
           background: var(--surface);
-          animation: modalSlideUp 0.3s ease-out;
+          animation: modalSlideUp 0.22s ease-out;
         }
 
         @keyframes modalSlideUp {
@@ -473,13 +645,18 @@ const Doctors = () => {
         }
 
         .modal-form {
-          padding: 1.5rem;
+          padding: 1.25rem;
         }
 
         .form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
+          gap: 1rem;
+        }
+
+        @media (max-width: 720px) {
+          .modal-content { max-width: 420px; }
+          .form-grid { grid-template-columns: 1fr; }
         }
 
         .form-group {
@@ -505,6 +682,79 @@ const Doctors = () => {
           background: var(--background);
           color: var(--text-main);
           outline: none;
+        }
+
+        /* Specialty badges and checkbox grid */
+        .spec-badge {
+          display: inline-block;
+          background: rgba(14,165,233,0.08);
+          color: var(--primary);
+          padding: 0.25rem 0.55rem;
+          border-radius: 999px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          margin-right: 0.35rem;
+          margin-bottom: 0.35rem;
+        }
+
+        .spec-badge.selected {
+          background: linear-gradient(90deg,#e0f2fe,#bae6fd);
+          color: #075985;
+          border: 1px solid #7dd3fc;
+        }
+
+        .spec-badge.muted {
+          background: transparent;
+          color: var(--text-muted);
+          border: 1px dashed var(--border);
+        }
+
+        .checkbox-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .checkbox-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.45rem 0.5rem;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+
+        .checkbox-item input {
+          width: 16px;
+          height: 16px;
+        }
+
+        .checkbox-item:hover { background: rgba(2,132,199,0.04); }
+
+        .checkbox-label { font-size: 0.95rem; color: var(--text-main); }
+
+        .specialty-list { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; margin-bottom: 0.4rem; }
+        .error-text { color: #dc2626; font-size: 0.72rem; margin-top: 0.2rem; display: block; }
+        .field-error { color: #dc2626; font-size: 0.72rem; margin-top: 0.2rem; }
+        .success-alert {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          top: 12px;
+          background: linear-gradient(90deg,#bbf7d0,#86efac);
+          padding: 0.6rem 1rem;
+          border-radius: 8px;
+          color: #064e3b;
+          font-weight: 700;
+          box-shadow: 0 8px 20px rgba(16,185,129,0.12);
+          z-index: 1100;
+          animation: toastIn .28s ease-out;
+        }
+
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
 
         .modal-footer {

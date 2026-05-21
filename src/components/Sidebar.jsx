@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag, ClipboardList, BarChart2 } from 'lucide-react';
+import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag, ClipboardList, BarChart2, ReceiptText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
@@ -18,6 +18,7 @@ const Sidebar = () => {
     { name: 'Citas', icon: <Calendar size={20} />, path: '/citas' },
     { name: 'Especialidades', icon: <Tag size={20} />, path: '/especialidades' },
     { name: 'Consultas', icon: <ClipboardList size={20} />, path: '/consultas' },
+    { name: 'Facturación', icon: <ReceiptText size={20} />, path: '/facturacion' },
     { name: 'Reportes', icon: <BarChart2 size={20} />, path: '/reportes' },
   ];
 
