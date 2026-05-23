@@ -622,10 +622,12 @@ const Doctors = () => {
         }
 
         .modal-content {
-          width: 100%;
+          width: min(100%, 680px);
           max-width: 680px;
+          max-height: calc(100vh - 2rem);
           border-radius: var(--radius);
           overflow: hidden;
+          overflow-y: auto;
           box-shadow: var(--shadow-lg);
           background: var(--surface);
           animation: modalSlideUp 0.22s ease-out;
@@ -711,9 +713,12 @@ const Doctors = () => {
 
         .checkbox-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
           gap: 0.5rem;
           align-items: center;
+          max-height: 260px;
+          overflow-y: auto;
+          padding-right: 0.25rem;
         }
 
         .checkbox-item {

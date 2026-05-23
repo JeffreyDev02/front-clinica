@@ -25,6 +25,12 @@ const Appointments = () => {
     hora: '',
     estado: 'Normal'
   });
+  const [patientQuery, setPatientQuery] = useState('');
+  const [doctorQuery, setDoctorQuery] = useState('');
+  const [filteredPatients, setFilteredPatients] = useState([]);
+  const [filteredDoctors, setFilteredDoctors] = useState([]);
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const [view, setView] = useState('calendar'); // 'calendar' or 'list'
 
@@ -88,6 +94,8 @@ const Appointments = () => {
         hora: appointment.hora,
         estado: appointment.estado || 'Normal'
       });
+      setPatientQuery(getPatientName(appointment.id_paciente));
+      setDoctorQuery(getDoctorName(appointment.id_medico));
     } else {
       setEditingAppointment(null);
       setFormData({
@@ -97,7 +105,12 @@ const Appointments = () => {
         hora: '09:00',
         estado: 'Normal'
       });
+      setPatientQuery('');
+      setDoctorQuery('');
     }
+    setFilteredPatients([]);
+    setFilteredDoctors([]);
+    setFormErrors({});
     setIsModalOpen(true);
   };
 
@@ -109,21 +122,152 @@ const Appointments = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handlePatientQueryChange = (e) => {
+    const query = e.target.value;
+    setPatientQuery(query);
+    setFormData(prev => ({ ...prev, id_paciente: '' }));
+    setFormErrors(prev => ({ ...prev, id_paciente: '' }));
+    const results = query.trim().length > 2 ? patients.filter(p => {
+      const fullName = `${p.nombre} ${p.apellido}`.toLowerCase();
+      return fullName.includes(query.toLowerCase());
+    }).slice(0, 6) : [];
+    setFilteredPatients(results);
+  };
+
+  const handleDoctorQueryChange = (e) => {
+    const query = e.target.value;
+    setDoctorQuery(query);
+    setFormData(prev => ({ ...prev, id_medico: '' }));
+    setFormErrors(prev => ({ ...prev, id_medico: '' }));
+    const results = query.trim().length > 2 ? doctors.filter(d => {
+      const fullName = `${d.nombre} ${d.apellido}`.toLowerCase();
+      return fullName.includes(query.toLowerCase());
+    }).slice(0, 6) : [];
+    setFilteredDoctors(results);
+  };
+
+  const selectPatient = (patient) => {
+    setFormData(prev => ({ ...prev, id_paciente: patient.id_paciente }));
+    setPatientQuery(`${patient.nombre} ${patient.apellido}`);
+    setFilteredPatients([]);
+    setFormErrors(prev => ({ ...prev, id_paciente: '' }));
+  };
+
+  const selectDoctor = (doctor) => {
+    setFormData(prev => ({ ...prev, id_medico: doctor.id_medico }));
+    setDoctorQuery(`${doctor.nombre} ${doctor.apellido}`);
+    setFilteredDoctors([]);
+    setFormErrors(prev => ({ ...prev, id_medico: '' }));
+  };
+
+  const normalizeDate = (dateString) => {
+    return new Date(`${dateString}T00:00:00`);
+  };
+
+  const normalizeTime = (timeString) => {
+    if (!timeString) return '';
+    const match = timeString.match(/^(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2, '0')}:${match[2]}` : timeString;
+  };
+
+  const validateAppointmentForm = () => {
+    const errors = {};
+    const today = normalizeDate(new Date().toISOString().split('T')[0]);
+    const selectedDate = formData.fecha ? normalizeDate(formData.fecha) : null;
+    const selectedTime = normalizeTime(formData.hora || '');
+    const currentTime = new Date().toTimeString().slice(0, 5); // Get HH:MM format
+
+    if (!formData.id_paciente) {
+      errors.id_paciente = 'Selecciona un paciente válido de la lista';
+    }
+    if (!formData.id_medico) {
+      errors.id_medico = 'Selecciona un médico válido de la lista';
+    }
+    if (!selectedDate) {
+      errors.fecha = 'Selecciona una fecha';
+    } else if (selectedDate < today) {
+      errors.fecha = 'No puedes agendar una cita en una fecha anterior a hoy';
+    }
+    if (!selectedTime) {
+      errors.hora = 'Selecciona una hora dentro del horario de atención (08:00 - 17:00)';
+    } else if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(selectedTime) || selectedTime < '08:00' || selectedTime > '17:00') {
+      errors.hora = 'La hora debe ser entre 08:00 y 17:00';
+    } else if (selectedDate?.getTime() === today.getTime() && selectedTime < currentTime) {
+      errors.hora = 'No puedes agendar una cita a una hora que ya pasó hoy';
+    }
+
+    const sameDate = (apt) => {
+      return normalizeDate(apt.fecha).getTime() === selectedDate?.getTime();
+    };
+
+    const normalizeId = (id) => (id === null || id === undefined) ? '' : id.toString();
+    const sameAppointment = (apt) => editingAppointment ? normalizeId(apt.id_cita) !== normalizeId(editingAppointment.id_cita) : true;
+    const selectedDoctorId = normalizeId(formData.id_medico);
+    const selectedPatientId = normalizeId(formData.id_paciente);
+    const selectedNormalizedTime = selectedTime;
+
+    const sameTimeAndDate = (apt) => normalizeTime(apt.hora) === selectedNormalizedTime && sameDate(apt);
+
+    const conflictDoctor = appointments.find((apt) => {
+      return sameAppointment(apt) && sameTimeAndDate(apt) && normalizeId(apt.id_medico) === selectedDoctorId;
+    });
+
+    const conflictPatient = appointments.find((apt) => {
+      return sameAppointment(apt) && sameTimeAndDate(apt) && normalizeId(apt.id_paciente) === selectedPatientId;
+    });
+
+    if (conflictDoctor) {
+      errors.id_medico = 'El médico ya tiene una cita en ese día y hora';
+    }
+
+    if (conflictPatient) {
+      errors.id_paciente = 'El paciente ya tiene una cita en ese día y hora';
+    }
+
+    if ((conflictDoctor || conflictPatient) && selectedDate && selectedTime) {
+      if (!errors.hora) {
+        errors.hora = 'Ya existe una cita en esta fecha/hora';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Refresh appointments from server to reduce race conditions
     try {
+      await fetchData();
+    } catch (err) {
+      console.warn('No se pudo refrescar datos antes de validar, procediendo con validación local', err);
+    }
+
+    if (!validateAppointmentForm()) return;
+
+    setSubmitting(true);
+    try {
+      // Re-fetch before final submit to ensure latest state
+      await fetchData();
+      if (!validateAppointmentForm()) {
+        return;
+      }
+
       if (editingAppointment) {
         await updateAppointment(editingAppointment.id_cita, formData);
       } else {
         await createAppointment(formData);
       }
       handleCloseModal();
-      fetchData();
+      await fetchData();
     } catch (err) {
       alert('Error al guardar la cita');
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -339,39 +483,53 @@ const Appointments = () => {
                 <X size={20} />
               </button>
             </header>
-            <form onSubmit={handleSubmit} className="modal-form">
+            <form onSubmit={handleSubmit} className="modal-form" noValidate>
               <div className="form-grid">
                 <div className="form-group">
                   <label>Paciente</label>
-                  <select 
-                    name="id_paciente" 
-                    required 
-                    value={formData.id_paciente}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Seleccione un paciente</option>
-                    {patients.map(p => (
-                      <option key={p.id_paciente} value={p.id_paciente}>
-                        {p.nombre} {p.apellido}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    name="patientQuery"
+                    value={patientQuery}
+                    onChange={handlePatientQueryChange}
+                    placeholder="Buscar paciente por nombre"
+                    autoComplete="off"
+                  />
+                  <input type="hidden" name="id_paciente" value={formData.id_paciente} />
+                  <span className="field-note">Escribe al menos 3 caracteres para buscar</span>
+                  {formErrors.id_paciente && <span className="field-error">{formErrors.id_paciente}</span>}
+                  {filteredPatients.length > 0 && (
+                    <ul className="suggestions-list">
+                      {filteredPatients.map((p) => (
+                        <li key={p.id_paciente} onMouseDown={() => selectPatient(p)}>
+                          {p.nombre} {p.apellido}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Médico</label>
-                  <select 
-                    name="id_medico" 
-                    required 
-                    value={formData.id_medico}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Seleccione un médico</option>
-                    {doctors.map(d => (
-                      <option key={d.id_medico} value={d.id_medico}>
-                        {d.nombre} {d.apellido}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    name="doctorQuery"
+                    value={doctorQuery}
+                    onChange={handleDoctorQueryChange}
+                    placeholder="Buscar médico por nombre"
+                    autoComplete="off"
+                  />
+                  <input type="hidden" name="id_medico" value={formData.id_medico} />
+                  <span className="field-note">Escribe al menos 3 caracteres para buscar</span>
+                  {formErrors.id_medico && <span className="field-error">{formErrors.id_medico}</span>}
+                  {filteredDoctors.length > 0 && (
+                    <ul className="suggestions-list">
+                      {filteredDoctors.map((d) => (
+                        <li key={d.id_medico} onMouseDown={() => selectDoctor(d)}>
+                          {d.nombre} {d.apellido}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Fecha</label>
@@ -382,16 +540,18 @@ const Appointments = () => {
                     value={formData.fecha}
                     onChange={handleInputChange}
                   />
+                  {formErrors.fecha && <span className="field-error">{formErrors.fecha}</span>}
                 </div>
                 <div className="form-group">
                   <label>Hora</label>
                   <input 
                     type="time" 
                     name="hora" 
-                    required 
+                    step="900"
                     value={formData.hora}
                     onChange={handleInputChange}
                   />
+                  {formErrors.hora && <span className="field-error">{formErrors.hora}</span>}
                 </div>
                 <div className="form-group full-width">
                   <label>Estado</label>
@@ -410,9 +570,9 @@ const Appointments = () => {
               </div>
               <footer className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={handleCloseModal}>Cancelar</button>
-                <button type="submit" className="btn-primary">
+                <button type="submit" className="btn-primary" disabled={submitting} aria-busy={submitting}>
                   <Save size={18} />
-                  <span>{editingAppointment ? 'Actualizar Cita' : 'Confirmar Cita'}</span>
+                  <span>{submitting ? 'Guardando...' : (editingAppointment ? 'Actualizar Cita' : 'Confirmar Cita')}</span>
                 </button>
               </footer>
             </form>
@@ -692,6 +852,29 @@ const Appointments = () => {
           color: #1e293b; /* Dark text for readability */
         }
 
+        .suggestions-list {
+          margin: 0.5rem 0 0;
+          padding: 0.35rem 0;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          background: #fff;
+          max-height: 240px;
+          overflow-y: auto;
+          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+          list-style: none;
+          z-index: 20;
+        }
+
+        .suggestions-list li {
+          padding: 0.75rem 1rem;
+          cursor: pointer;
+          transition: background 0.2s ease;
+        }
+
+        .suggestions-list li:hover {
+          background: rgba(14, 165, 233, 0.08);
+        }
+
         .form-group select option {
           color: #1e293b;
           background: white;
@@ -736,6 +919,20 @@ const Appointments = () => {
 
         .btn-secondary:hover {
           background: var(--background); border-color: var(--primary); color: var(--primary);
+        }
+
+        .field-note {
+          display: block;
+          color: var(--text-muted);
+          font-size: 0.78rem;
+          margin-top: 0.25rem;
+        }
+
+        .field-error {
+          display: block;
+          color: #dc2626;
+          font-size: 0.78rem;
+          margin-top: 0.25rem;
         }
 
         .loading-state {
