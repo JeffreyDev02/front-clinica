@@ -12,7 +12,11 @@ export const createAppointment = async (appointmentData) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(appointmentData),
   });
-  if (!response.ok) throw new Error('Error creating appointment');
+  if (!response.ok) {
+    const errorData = await response.json();
+    const error = new Error(JSON.stringify(errorData));
+    throw error;
+  }
   return response.json();
 };
 

@@ -264,6 +264,22 @@ const Appointments = () => {
       handleCloseModal();
       await fetchData();
     } catch (err) {
+      // Try to parse backend error response
+      try {
+        const errorData = err.message ? JSON.parse(err.message) : null;
+        if (errorData?.conflict && errorData?.message) {
+          const newErrors = {};
+          if (errorData.conflict === 'medico') {
+            newErrors.id_medico = errorData.message;
+          } else if (errorData.conflict === 'paciente') {
+            newErrors.id_paciente = errorData.message;
+          }
+          setFormErrors(newErrors);
+          return;
+        }
+      } catch (parseErr) {
+        // If parsing fails, continue with generic error
+      }
       alert('Error al guardar la cita');
       console.error(err);
     } finally {

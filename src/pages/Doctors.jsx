@@ -133,8 +133,8 @@ const Doctors = () => {
     if (!formData.telefono || !/^\d{8}$/.test(formData.telefono)) {
       errors.telefono = 'Teléfono inválido (debe tener exactamente 8 dígitos)';
     }
-    if (!Array.isArray(formData.especialidades) || formData.especialidades.length < 1) {
-      errors.especialidades = 'Selecciona al menos una especialidad';
+    if (!Array.isArray(formData.especialidades) || formData.especialidades.length !== 1) {
+      errors.especialidades = 'Debes seleccionar exactamente una especialidad';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -143,15 +143,14 @@ const Doctors = () => {
   const handleSpecialtyToggle = (e) => {
     const { value, checked } = e.target;
     setFormData(prev => {
-      const current = Array.isArray(prev.especialidades) ? [...prev.especialidades] : [];
+      // Solo permitir una especialidad a la vez
       if (checked) {
-        if (!current.includes(value)) current.push(value);
+        return { ...prev, especialidades: [value] };
       } else {
-        const idx = current.indexOf(value);
-        if (idx > -1) current.splice(idx, 1);
+        return { ...prev, especialidades: [] };
       }
-      return { ...prev, especialidades: current };
     });
+    setFormErrors(prev => ({ ...prev, especialidades: '' }));
   };
 
   const syncDoctorSpecialties = async (doctorId, selectedIds, originalIds) => {
@@ -355,6 +354,7 @@ const Doctors = () => {
                 </div>
                 <div className="form-group full-width">
                   <label>Especialidades</label>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.5rem 0', fontStyle: 'italic' }}>Solo puedes seleccionar una especialidad</p>
                   <div style={{ margin: '0.5rem 0 0 0', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {Array.isArray(formData.especialidades) && formData.especialidades.length > 0 ? (
                       formData.especialidades.map(id => (
