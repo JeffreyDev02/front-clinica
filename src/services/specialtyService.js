@@ -1,13 +1,14 @@
 const API_URL = 'http://localhost:3000/api/especialidades';
+import { authHeaders } from './apiClient';
 
 export const getSpecialties = async () => {
-  const response = await fetch(API_URL);
+  const response = await fetch(API_URL, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching specialties');
   return response.json();
 };
 
 export const getSpecialtyById = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`);
+  const response = await fetch(`${API_URL}/${id}`, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching specialty');
   return response.json();
 };
@@ -15,7 +16,7 @@ export const getSpecialtyById = async (id) => {
 export const createSpecialty = async (specialtyData) => {
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(specialtyData),
   });
   if (!response.ok) throw new Error('Error creating specialty');
@@ -25,7 +26,7 @@ export const createSpecialty = async (specialtyData) => {
 export const updateSpecialty = async (id, specialtyData) => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(specialtyData),
   });
   if (!response.ok) throw new Error('Error updating specialty');
@@ -34,7 +35,7 @@ export const updateSpecialty = async (id, specialtyData) => {
 
 export const deleteSpecialty = async (id) => {
   const response = await fetch(`${API_URL}/${id}`, {
-    method: 'DELETE',
+    method: 'DELETE', headers: authHeaders(),
   });
   if (!response.ok) throw new Error('Error deleting specialty');
   return response.json();

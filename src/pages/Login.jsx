@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { login } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -132,16 +132,16 @@ const Login = () => {
                     </button>
                 </form>
 
-                <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                <div style={{ display: 'none' }}>
                     <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>¿No tienes cuenta?</p>
-                    <Link to="/register" style={{
+                    <span style={{
                         color: '#0ea5e9', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
                     }}
                     onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                     onMouseLeave={e => e.target.style.textDecoration = 'none'}
                     >
                         Regístrate aquí
-                    </Link>
+                    </span>
                 </div>
 
                 <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>

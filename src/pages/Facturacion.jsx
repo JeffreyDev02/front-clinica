@@ -33,6 +33,7 @@ const Facturacion = () => {
             await updateFacturaEstado(facturaId, 'Pagada');
             fetchData();
         } catch (error) {
+            console.error(error);
             alert('Error o API no disponible: Simulando actualización en vista');
             setFacturas(facturas.map(f => (f.id || f._id || f.id_factura) === facturaId ? { ...f, estado: 'Pagada' } : f));
         }
@@ -44,6 +45,7 @@ const Facturacion = () => {
             await deleteFactura(facturaId);
             fetchData();
         } catch (error) {
+            console.error(error);
             alert('Error o API no disponible: Simulando eliminación');
             setFacturas(facturas.filter(f => (f.id || f._id || f.id_factura) !== facturaId));
         }
@@ -70,7 +72,7 @@ const Facturacion = () => {
     };
 
     const filteredFacturas = facturas.filter(f => 
-        f.paciente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (f.paciente_nombre || `${f.nombre || ''} ${f.apellido || ''}`).toLowerCase().includes(searchTerm.toLowerCase()) || 
         f.numero_factura?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -122,9 +124,9 @@ const Facturacion = () => {
                                     return (
                                         <tr key={facturaId}>
                                             <td style={{ fontWeight: 600 }}>{factura.numero_factura || `FA-${facturaId}`}</td>
-                                            <td>{factura.paciente_nombre || 'N/A'}</td>
+                                            <td>{factura.paciente_nombre || `${factura.nombre || ''} ${factura.apellido || ''}`.trim() || 'N/A'}</td>
                                             <td>{new Date(factura.fecha_emision || Date.now()).toLocaleDateString()}</td>
-                                            <td style={{ fontWeight: 600 }}>${parseFloat(factura.total || 0).toFixed(2)}</td>
+                                            <td style={{ fontWeight: 600 }}>Q {parseFloat(factura.total || 0).toFixed(2)}</td>
                                             <td><StatusBadge status={factura.estado} /></td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>

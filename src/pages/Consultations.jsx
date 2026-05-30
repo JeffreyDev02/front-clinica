@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileDown, Eye, Search, ClipboardList, User, Calendar, Hash } from 'lucide-react';
+import { Loader2, FileDown, Edit2, Search, User, Calendar, Hash } from 'lucide-react';
 import { getConsultas, getConsultaById } from '../services/consultaService';
 import { getAppointments } from '../services/appointmentService';
 import { getPatients } from '../services/patientService';
@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const Consultations = () => {
+    const navigate = useNavigate();
     const [consultas, setConsultas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -129,7 +130,7 @@ const Consultations = () => {
         // Búsqueda flexible de medicamentos
         let medsArray = consulta.medicamentos || consulta.medicamento || consulta.receta || consulta.items;
         if (typeof medsArray === 'string') {
-            try { medsArray = JSON.parse(medsArray); } catch(e) { medsArray = []; }
+            try { medsArray = JSON.parse(medsArray); } catch { medsArray = []; }
         }
 
         if (Array.isArray(medsArray) && medsArray.length > 0) {
@@ -238,6 +239,10 @@ const Consultations = () => {
                                                     <FileDown size={18} />
                                                     <span>PDF</span>
                                                 </button>
+                                                <button className="btn-action-edit" onClick={() => navigate(`/consultas/editar/${c.id_consulta}`)} title="Editar consulta y receta">
+                                                    <Edit2 size={18} />
+                                                    <span>Editar</span>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -298,6 +303,7 @@ const Consultations = () => {
                     transition: var(--transition);
                 }
                 .btn-action-view:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+                .btn-action-edit { display:flex;align-items:center;gap:.5rem;background:#0ea5e9;color:white;border:0;padding:.5rem 1rem;border-radius:8px;font-weight:700;cursor:pointer; }
 
                 .font-semibold { font-weight: 600; color: var(--text-main); }
             `}} />

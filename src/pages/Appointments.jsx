@@ -4,11 +4,15 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment } from '../services/appointmentService';
+import { useAuth } from '../context/AuthContext';
 import { getPatients } from '../services/patientService';
 import { getDoctors } from '../services/doctorService';
 
 const Appointments = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageAppointments = user?.rol === 'admin' || user?.rol === 'recepcion';
+  const canWriteConsultations = user?.rol === 'admin' || user?.rol === 'medico';
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -90,7 +94,7 @@ const Appointments = () => {
       setFormData({
         id_paciente: appointment.id_paciente,
         id_medico: appointment.id_medico,
-        fecha: appointment.fecha ? new Date(appointment.fecha).toISOString().split('T')[0] : '',
+        fecha: appointment.fecha ? appointment.fecha.toString().slice(0, 10) : '',
         hora: appointment.hora,
         estado: appointment.estado || 'Normal'
       });
@@ -101,7 +105,7 @@ const Appointments = () => {
       setFormData({
         id_paciente: '',
         id_medico: '',
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: getLocalDateString(),
         hora: '09:00',
         estado: 'Normal'
       });
@@ -167,6 +171,13 @@ const Appointments = () => {
     return new Date(`${dateString}T00:00:00`);
   };
 
+  const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const normalizeTime = (timeString) => {
     if (!timeString) return '';
     const match = timeString.match(/^(\d{1,2}):(\d{2})/);
@@ -175,7 +186,7 @@ const Appointments = () => {
 
   const validateAppointmentForm = () => {
     const errors = {};
-    const today = normalizeDate(new Date().toISOString().split('T')[0]);
+    const today = normalizeDate(getLocalDateString());
     const selectedDate = formData.fecha ? normalizeDate(formData.fecha) : null;
     const selectedTime = normalizeTime(formData.hora || '');
     const currentTime = new Date().toTimeString().slice(0, 5); // Get HH:MM format
@@ -277,7 +288,7 @@ const Appointments = () => {
           setFormErrors(newErrors);
           return;
         }
-      } catch (parseErr) {
+      } catch {
         // If parsing fails, continue with generic error
       }
       alert('Error al guardar la cita');
@@ -361,10 +372,10 @@ const Appointments = () => {
                Lista
              </button>
           </div>
-          <button className="btn-primary" onClick={() => handleOpenModal()}>
+          {canManageAppointments && <button className="btn-primary" onClick={() => handleOpenModal()}>
             <Plus size={18} />
             <span>Agendar Cita</span>
-          </button>
+          </button>}
           <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <FileDown size={18} />
             <span>Exportar PDF</span>
@@ -425,15 +436,15 @@ const Appointments = () => {
                     </td>
                     <td>
                       <div className="actions-cell">
-                          <button className="btn-ghost edit" onClick={() => handleOpenModal(apt)} title="Editar Cita">
+                          {canManageAppointments && <button className="btn-ghost edit" onClick={() => handleOpenModal(apt)} title="Editar Cita">
                             <Edit2 size={16} />
-                          </button>
-                          <button className="btn-ghost edit" onClick={() => navigate(`/consultas/nueva/${apt.id_cita}`)} title="Generar Consulta">
+                          </button>}
+                          {canWriteConsultations && <button className="btn-ghost edit" onClick={() => navigate(`/consultas/nueva/${apt.id_cita}`)} title="Generar Consulta">
                             <FileText size={16} />
-                          </button>
-                          <button className="btn-ghost delete" onClick={() => handleDelete(apt.id_cita)} title="Eliminar Cita">
+                          </button>}
+                          {canManageAppointments && <button className="btn-ghost delete" onClick={() => handleDelete(apt.id_cita)} title="Eliminar Cita">
                             <Trash2 size={16} />
-                          </button>
+                          </button>}
                       </div>
                     </td>
                   </tr>
@@ -555,6 +566,7 @@ const Appointments = () => {
                     required 
                     value={formData.fecha}
                     onChange={handleInputChange}
+                    min={getLocalDateString()}
                   />
                   {formErrors.fecha && <span className="field-error">{formErrors.fecha}</span>}
                 </div>
@@ -564,6 +576,8 @@ const Appointments = () => {
                     type="time" 
                     name="hora" 
                     step="900"
+                    min={formData.fecha === getLocalDateString() ? new Date().toTimeString().slice(0, 5) : '08:00'}
+                    max="17:00"
                     value={formData.hora}
                     onChange={handleInputChange}
                   />

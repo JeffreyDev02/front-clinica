@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Clock, Users, CalendarCheck, TrendingUp, Activity, Loader2, UserRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { authHeaders } from '../services/apiClient';
 
 const API = 'http://localhost:3000/api/reportes/home-stats';
 
@@ -17,15 +18,21 @@ const Home = () => {
   const { user } = useAuth();
 
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(user?.rol === 'admin');
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(API)
-      .then(r => r.json())
+    if (user?.rol !== 'admin') {
+      return;
+    }
+    fetch(API, { headers: authHeaders() })
+      .then(r => {
+        if (!r.ok) throw new Error('No se pudo cargar el resumen');
+        return r.json();
+      })
       .then(data => { setStats(data); setLoading(false); })
       .catch(() => { setError('No se pudo conectar con el servidor.'); setLoading(false); });
-  }, []);
+  }, [user?.rol]);
 
   const statCards = stats ? [
     { label: 'Citas de hoy',      value: stats.citas_hoy,       icon: <CalendarCheck size={24} />, color: '#0ea5e9' },
@@ -45,8 +52,9 @@ const Home = () => {
           <h1>Bienvenido{user?.nombre ? `, ${user.nombre}` : ''} a <span>MediConnect</span></h1>
           <p>Gestiona tu clínica con eficiencia, simplicidad y tecnología de vanguardia. Todo lo que necesitas para cuidar a tus pacientes en un solo lugar.</p>
           <div className="hero-actions">
-            <button className="btn-primary" onClick={() => navigate('/citas')}>Nueva Cita</button>
-            <button className="btn-secondary" onClick={() => navigate('/reportes')}>Ver Reportes</button>
+            {(user?.rol === 'admin' || user?.rol === 'recepcion') && <button className="btn-primary" onClick={() => navigate('/citas')}>Nueva Cita</button>}
+            {user?.rol === 'admin' && <button className="btn-secondary" onClick={() => navigate('/reportes')}>Ver Reportes</button>}
+            {user?.rol === 'medico' && <button className="btn-primary" onClick={() => navigate('/consultas')}>Ver Consultas</button>}
           </div>
         </div>
         <div className="hero-visual">
@@ -54,7 +62,7 @@ const Home = () => {
         </div>
       </header>
 
-      <section className="stats-grid">
+      {user?.rol === 'admin' && <section className="stats-grid">
         {loading
           ? [1,2,3,4].map(i => (
               <div key={i} className="stat-card glass" style={{ justifyContent: 'center', minHeight: 80 }}>
@@ -73,9 +81,9 @@ const Home = () => {
               </div>
             ))
         }
-      </section>
+      </section>}
 
-      <div className="dashboard-content">
+      {user?.rol === 'admin' && <div className="dashboard-content">
         <div className="content-card glass">
           <h2>Próximas Citas</h2>
           {loading ? (
@@ -109,7 +117,7 @@ const Home = () => {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes spin { to { transform: rotate(360deg); } }

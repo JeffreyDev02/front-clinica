@@ -4,9 +4,12 @@ import { UserPlus, Search, Filter, MoreVertical, Edit2, Trash2, X, Save, Loader2
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../services/patientService';
+import { useAuth } from '../context/AuthContext';
 
 const Patients = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManagePatients = user?.rol === 'admin' || user?.rol === 'recepcion';
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,7 +30,6 @@ const Patients = () => {
   const validateForm = () => {
     const errors = {};
     const namePattern = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]{2,}$/;
-    const phonePattern = /^[0-9+\s()\-]{7,20}$/;
     const today = new Date();
     const birthDate = formData.fecha_nacimiento ? new Date(formData.fecha_nacimiento) : null;
 
@@ -197,10 +199,10 @@ const Patients = () => {
           <h1>Gestión de Pacientes</h1>
           <p>Visualiza y administra todos los registros de pacientes.</p>
         </div>
-        <button className="btn-primary" onClick={() => handleOpenModal()}>
+        {canManagePatients && <button className="btn-primary" onClick={() => handleOpenModal()}>
           <UserPlus size={18} />
           <span>Nuevo Paciente</span>
-        </button>
+        </button>}
         <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <FileDown size={18} />
           <span>Exportar PDF</span>
@@ -262,12 +264,12 @@ const Patients = () => {
                         <button className="btn-ghost" title="Ver Expediente" onClick={() => navigate(`/expediente/${p.id_paciente}`)} style={{ color: '#0ea5e9' }}>
                           <FolderOpen size={16} />
                         </button>
-                        <button className="btn-ghost edit" title="Editar" onClick={() => handleOpenModal(p)}>
+                        {canManagePatients && <button className="btn-ghost edit" title="Editar" onClick={() => handleOpenModal(p)}>
                           <Edit2 size={16} />
-                        </button>
-                        <button className="btn-ghost delete" title="Eliminar" onClick={() => handleDelete(p.id_paciente)}>
+                        </button>}
+                        {canManagePatients && <button className="btn-ghost delete" title="Eliminar" onClick={() => handleDelete(p.id_paciente)}>
                           <Trash2 size={16} />
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>

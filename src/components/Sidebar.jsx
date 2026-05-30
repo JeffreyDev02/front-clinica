@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag, ClipboardList, BarChart2, ReceiptText } from 'lucide-react';
+import { Home, Users, UserRound, Calendar, LogOut, HeartPulse, Tag, ClipboardList, BarChart2, ReceiptText, Pill } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -18,9 +18,23 @@ const Sidebar = () => {
     { name: 'Citas', icon: <Calendar size={20} />, path: '/citas' },
     { name: 'Especialidades', icon: <Tag size={20} />, path: '/especialidades' },
     { name: 'Consultas', icon: <ClipboardList size={20} />, path: '/consultas' },
+    { name: 'Medicamentos', icon: <Pill size={20} />, path: '/medicamentos' },
     { name: 'Facturación', icon: <ReceiptText size={20} />, path: '/facturacion' },
     { name: 'Reportes', icon: <BarChart2 size={20} />, path: '/reportes' },
-  ];
+  ].filter((item) => {
+    const permissions = {
+      '/': ['admin', 'medico', 'recepcion'],
+      '/pacientes': ['admin', 'medico', 'recepcion'],
+      '/doctores': ['admin'],
+      '/citas': ['admin', 'medico', 'recepcion'],
+      '/especialidades': ['admin'],
+      '/consultas': ['admin', 'medico'],
+      '/medicamentos': ['admin'],
+      '/facturacion': ['admin', 'recepcion'],
+      '/reportes': ['admin'],
+    };
+    return permissions[item.path]?.includes(user?.rol);
+  });
 
   return (
     <aside className="sidebar glass">

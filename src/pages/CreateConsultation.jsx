@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Save, X, Plus, Trash2, Loader2, ClipboardCheck, Pill } from 'lucide-react';
 import Select from 'react-select';
-import { createConsulta } from '../services/consultaService';
+import { createConsulta, getConsultaById, updateConsulta } from '../services/consultaService';
 import { getMedicamentos } from '../services/medicamentoService';
 import { getAppointments } from '../services/appointmentService';
 
 const CreateConsultation = () => {
-    const { idCita } = useParams();
+    const { idCita, idConsulta } = useParams();
+    const editing = Boolean(idConsulta);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -15,18 +16,20 @@ const CreateConsultation = () => {
     const [appointment, setAppointment] = useState(null);
     
     const [formData, setFormData] = useState({
-        id_cita: parseInt(idCita),
+        id_cita: idCita ? parseInt(idCita) : null,
         diagnostico: '',
         tratamiento: '',
+        comentarios: '',
         medicamentos: [{ id_medicamento: '', dosis: '' }]
     });
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [medsData, appointmentsData] = await Promise.all([
+                const [medsData, appointmentsData, consultaData] = await Promise.all([
                     getMedicamentos(),
-                    getAppointments()
+                    getAppointments(),
+                    editing ? getConsultaById(idConsulta) : Promise.resolve(null)
                 ]);
                 
                 // Set medicamentos for select
@@ -36,8 +39,18 @@ const CreateConsultation = () => {
                 })));
 
                 // Find specific appointment
-                const apt = appointmentsData.find(a => a.id_cita == idCita);
+                const aptId = consultaData?.id_cita || idCita;
+                const apt = appointmentsData.find(a => a.id_cita == aptId);
                 setAppointment(apt);
+                if (consultaData) {
+                    setFormData({
+                        id_cita: consultaData.id_cita,
+                        diagnostico: consultaData.diagnostico || '',
+                        tratamiento: consultaData.tratamiento || '',
+                        comentarios: consultaData.comentarios || '',
+                        medicamentos: consultaData.medicamentos?.length ? consultaData.medicamentos : [{ id_medicamento: '', dosis: '' }]
+                    });
+                }
             } catch (err) {
                 console.error('Error fetching data:', err);
             } finally {
@@ -45,7 +58,7 @@ const CreateConsultation = () => {
             }
         };
         fetchData();
-    }, [idCita]);
+    }, [editing, idCita, idConsulta]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -87,7 +100,8 @@ const CreateConsultation = () => {
                 medicamentos: formData.medicamentos.filter(m => m.id_medicamento && m.dosis)
             };
 
-            await createConsulta(finalData);
+            if (editing) await updateConsulta(idConsulta, finalData);
+            else await createConsulta(finalData);
             alert('Consulta guardada exitosamente');
             navigate('/consultas');
         } catch (err) {
@@ -115,8 +129,8 @@ const CreateConsultation = () => {
                         <ClipboardCheck size={28} className="header-icon" />
                     </div>
                     <div>
-                        <h1>Nueva Consulta Médica</h1>
-                        <p>Registro detallado de diagnóstico para la cita #{idCita}</p>
+                        <h1>{editing ? 'Editar Consulta Médica' : 'Nueva Consulta Médica'}</h1>
+                        <p>Registro detallado de diagnóstico para la cita #{formData.id_cita}</p>
                     </div>
                 </div>
                 <button className="btn-secondary" onClick={() => navigate('/citas')}>
@@ -176,6 +190,10 @@ const CreateConsultation = () => {
                                     style={{ color: '#0f172a', background: '#fff' }}
                                 />
                             </div>
+                            <div className="form-group">
+                                <label>Comentarios Clínicos</label>
+                                <textarea name="comentarios" rows="4" placeholder="Agregue observaciones y seguimiento..." value={formData.comentarios} onChange={handleInputChange} style={{ color: '#0f172a', background: '#fff' }} />
+                            </div>
                         </section>
 
                         <section className="form-section glass">
@@ -229,7 +247,7 @@ const CreateConsultation = () => {
                     <footer className="form-actions">
                         <button type="submit" className="btn-primary btn-large" disabled={saving}>
                             {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                            <span>Guardar Consulta Médica</span>
+                            <span>{editing ? 'Actualizar Consulta Médica' : 'Guardar Consulta Médica'}</span>
                         </button>
                     </footer>
                 </form>

@@ -1,13 +1,14 @@
 const API_URL = 'http://localhost:3000/api/pacientes';
+import { authHeaders } from './apiClient';
 
 export const getPatients = async () => {
-  const response = await fetch(API_URL);
+  const response = await fetch(API_URL, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching patients');
   return response.json();
 };
 
 export const getPatientById = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`);
+  const response = await fetch(`${API_URL}/${id}`, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching patient');
   return response.json();
 };
@@ -15,7 +16,7 @@ export const getPatientById = async (id) => {
 export const createPatient = async (patientData) => {
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(patientData),
   });
   if (!response.ok) throw new Error('Error creating patient');
@@ -25,7 +26,7 @@ export const createPatient = async (patientData) => {
 export const updatePatient = async (id, patientData) => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(patientData),
   });
   if (!response.ok) throw new Error('Error updating patient');
@@ -34,7 +35,7 @@ export const updatePatient = async (id, patientData) => {
 
 export const deletePatient = async (id) => {
   const response = await fetch(`${API_URL}/${id}`, {
-    method: 'DELETE',
+    method: 'DELETE', headers: authHeaders(),
   });
   if (!response.ok) throw new Error('Error deleting patient');
   return response.json();

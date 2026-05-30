@@ -1,13 +1,14 @@
 const API_URL = 'http://localhost:3000/api/medicos';
+import { authHeaders } from './apiClient';
 
 export const getDoctors = async () => {
-  const response = await fetch(API_URL);
+  const response = await fetch(API_URL, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching doctors');
   return response.json();
 };
 
 export const getDoctorById = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`);
+  const response = await fetch(`${API_URL}/${id}`, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching doctor');
   return response.json();
 };
@@ -15,7 +16,7 @@ export const getDoctorById = async (id) => {
 export const createDoctor = async (doctorData) => {
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(doctorData),
   });
   if (!response.ok) throw new Error('Error creating doctor');
@@ -25,7 +26,7 @@ export const createDoctor = async (doctorData) => {
 export const updateDoctor = async (id, doctorData) => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(doctorData),
   });
   if (!response.ok) throw new Error('Error updating doctor');
@@ -38,7 +39,7 @@ export const assignDoctorSpecialty = async (id_medico, id_especialidad) => {
   const payload = { id_medico, id_especialidad };
   const response = await fetch(DOCTOR_SPECIALTY_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
@@ -52,7 +53,7 @@ export const removeDoctorSpecialty = async (id_medico, id_especialidad) => {
   const payload = { id_medico, id_especialidad };
   const response = await fetch(DOCTOR_SPECIALTY_API_URL, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
@@ -63,14 +64,14 @@ export const removeDoctorSpecialty = async (id_medico, id_especialidad) => {
 };
 
 export const getDoctorSpecialties = async (id_medico) => {
-  const response = await fetch(`${DOCTOR_SPECIALTY_API_URL}/medico/${id_medico}`);
+  const response = await fetch(`${DOCTOR_SPECIALTY_API_URL}/medico/${id_medico}`, { headers: authHeaders() });
   if (!response.ok) throw new Error('Error fetching doctor specialties');
   return response.json();
 };
 
 export const deleteDoctor = async (id) => {
   const response = await fetch(`${API_URL}/${id}`, {
-    method: 'DELETE',
+    method: 'DELETE', headers: authHeaders(),
   });
   if (!response.ok) throw new Error('Error deleting doctor');
   return response.json();

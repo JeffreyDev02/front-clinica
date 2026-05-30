@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import MainLayout from './components/MainLayout';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Home from './pages/Home';
 import Patients from './pages/Patients';
 import Doctors from './pages/Doctors';
@@ -16,10 +15,12 @@ import Expediente from './pages/Expediente';
 import Facturacion from './pages/Facturacion';
 import CreateFactura from './pages/CreateFactura';
 import ViewFactura from './pages/ViewFactura';
+import Medicamentos from './pages/Medicamentos';
 
-const ProtectedLayout = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+const ProtectedLayout = ({ children, roles }) => {
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(user?.rol)) return <Navigate to="/" replace />;
   return <MainLayout>{children}</MainLayout>;
 };
 
@@ -27,19 +28,20 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
       <Route path="/" element={<ProtectedLayout><Home /></ProtectedLayout>} />
-      <Route path="/pacientes" element={<ProtectedLayout><Patients /></ProtectedLayout>} />
-      <Route path="/doctores" element={<ProtectedLayout><Doctors /></ProtectedLayout>} />
-      <Route path="/citas" element={<ProtectedLayout><Appointments /></ProtectedLayout>} />
-      <Route path="/especialidades" element={<ProtectedLayout><Specialties /></ProtectedLayout>} />
-      <Route path="/consultas" element={<ProtectedLayout><Consultations /></ProtectedLayout>} />
-      <Route path="/consultas/nueva/:idCita" element={<ProtectedLayout><CreateConsultation /></ProtectedLayout>} />
-      <Route path="/facturacion" element={<ProtectedLayout><Facturacion /></ProtectedLayout>} />
-      <Route path="/facturacion/nueva" element={<ProtectedLayout><CreateFactura /></ProtectedLayout>} />
-      <Route path="/facturacion/:id" element={<ProtectedLayout><ViewFactura /></ProtectedLayout>} />
-      <Route path="/reportes" element={<ProtectedLayout><Reports /></ProtectedLayout>} />
-      <Route path="/expediente/:id" element={<ProtectedLayout><Expediente /></ProtectedLayout>} />
+      <Route path="/pacientes" element={<ProtectedLayout roles={['admin', 'medico', 'recepcion']}><Patients /></ProtectedLayout>} />
+      <Route path="/doctores" element={<ProtectedLayout roles={['admin']}><Doctors /></ProtectedLayout>} />
+      <Route path="/citas" element={<ProtectedLayout roles={['admin', 'medico', 'recepcion']}><Appointments /></ProtectedLayout>} />
+      <Route path="/especialidades" element={<ProtectedLayout roles={['admin']}><Specialties /></ProtectedLayout>} />
+      <Route path="/medicamentos" element={<ProtectedLayout roles={['admin']}><Medicamentos /></ProtectedLayout>} />
+      <Route path="/consultas" element={<ProtectedLayout roles={['admin', 'medico']}><Consultations /></ProtectedLayout>} />
+      <Route path="/consultas/nueva/:idCita" element={<ProtectedLayout roles={['admin', 'medico']}><CreateConsultation /></ProtectedLayout>} />
+      <Route path="/consultas/editar/:idConsulta" element={<ProtectedLayout roles={['admin', 'medico']}><CreateConsultation /></ProtectedLayout>} />
+      <Route path="/facturacion" element={<ProtectedLayout roles={['admin', 'recepcion']}><Facturacion /></ProtectedLayout>} />
+      <Route path="/facturacion/nueva" element={<ProtectedLayout roles={['admin', 'recepcion']}><CreateFactura /></ProtectedLayout>} />
+      <Route path="/facturacion/:id" element={<ProtectedLayout roles={['admin', 'recepcion']}><ViewFactura /></ProtectedLayout>} />
+      <Route path="/reportes" element={<ProtectedLayout roles={['admin']}><Reports /></ProtectedLayout>} />
+      <Route path="/expediente/:id" element={<ProtectedLayout roles={['admin', 'medico']}><Expediente /></ProtectedLayout>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

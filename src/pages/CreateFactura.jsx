@@ -5,13 +5,14 @@ import { createFactura } from '../services/facturaService';
 import { getPatients } from '../services/patientService';
 import { getAppointments } from '../services/appointmentService';
 import { getConsultas } from '../services/consultaService';
+import { getMedicamentos } from '../services/medicamentoService';
 
 const CreateFactura = () => {
     const navigate = useNavigate();
     const [pacientes, setPacientes] = useState([]);
     const [consultas, setConsultas] = useState([]);
     const [appointments, setAppointments] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [medicamentos, setMedicamentos] = useState([]);
     const [saving, setSaving] = useState(false);
     
     // Formulario Factura
@@ -22,20 +23,22 @@ const CreateFactura = () => {
     const [estado, setEstado] = useState('Pagada');
     
     const [items, setItems] = useState([
-        { id: Date.now(), descripcion: '', cantidad: 1, precio_unitario: 0 }
+        { id: Date.now(), id_medicamento: '', descripcion: '', cantidad: 1, precio_unitario: 0 }
     ]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [patientsData, appointmentsData, consultasData] = await Promise.all([
+                const [patientsData, appointmentsData, consultasData, medicamentosData] = await Promise.all([
                     getPatients(),
                     getAppointments(),
-                    getConsultas()
+                    getConsultas(),
+                    getMedicamentos()
                 ]);
                 setPacientes(patientsData);
                 setAppointments(appointmentsData);
                 setConsultas(consultasData);
+                setMedicamentos(medicamentosData);
             } catch (error) {
                 console.error('Error fetching billing data:', error);
                 setPacientes([{ id: 1, nombre: 'Alberto Gómez' }, { id: 2, nombre: 'María Silva' }]);
@@ -60,11 +63,21 @@ const CreateFactura = () => {
     });
 
     // Handlers
-    const handleAddRow = () => setItems([...items, { id: Date.now(), descripcion: '', cantidad: 1, precio_unitario: 0 }]);
+    const handleAddRow = () => setItems([...items, { id: Date.now(), id_medicamento: '', descripcion: '', cantidad: 1, precio_unitario: 0 }]);
     const handleRemoveRow = (id) => setItems(items.filter(item => item.id !== id));
     
     const handleItemChange = (id, field, value) => {
         setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const handleMedicamentoChange = (id, value) => {
+        const medicamento = medicamentos.find(med => med.id_medicamento.toString() === value);
+        setItems(items.map(item => item.id === id ? {
+            ...item,
+            id_medicamento: value,
+            descripcion: medicamento ? medicamento.nombre : '',
+            precio_unitario: medicamento ? medicamento.precio : 0,
+        } : item));
     };
 
     const handlePacienteChange = (e) => {
@@ -98,7 +111,7 @@ const CreateFactura = () => {
 
     // Calculations
     const subtotal = items.reduce((acc, item) => acc + (parseFloat(item.precio_unitario || 0) * (item.cantidad || 1)), 0);
-    const impuestos = subtotal * 0.16; // 16% IVA por ejemplo
+    const impuestos = subtotal * 0.12;
     const total = subtotal + impuestos;
 
     const handleSave = async () => {
@@ -114,13 +127,13 @@ const CreateFactura = () => {
                 subtotal, impuestos, total,
                 metodo_pago: metodoPago,
                 estado,
-                detalles: items.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precio_unitario: parseFloat(i.precio_unitario) }))
+                detalles: items.map(i => ({ id_medicamento: i.id_medicamento || null, descripcion: i.descripcion, cantidad: Number(i.cantidad), precio_unitario: parseFloat(i.precio_unitario) }))
             });
             alert('Factura creada exitosamente en el sistema.');
             navigate('/facturacion');
         } catch (err) {
             console.error(err);
-            alert('Error al crear la factura. Verifica la consulta y vuelve a intentarlo.');
+            alert(err.message || 'Error al crear la factura. Verifica la consulta y vuelve a intentarlo.');
         } finally {
             setSaving(false);
         }
@@ -214,16 +227,20 @@ const CreateFactura = () => {
                                 </button>
                             </div>
 
-                            {items.map((item, index) => (
+                            {items.map((item) => (
                                 <div key={item.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginBottom: '0.75rem', background: 'var(--surface)', padding: '0.75rem', borderRadius: 'var(--radius)' }}>
                                     <div style={{ flex: 2 }}>
+                                        <select className="form-input" value={item.id_medicamento} onChange={e => handleMedicamentoChange(item.id, e.target.value)} style={{ padding: '0.4rem', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+                                            <option value="">Concepto manual</option>
+                                            {medicamentos.map(med => <option key={med.id_medicamento} value={med.id_medicamento} disabled={med.stock <= 0}>{med.nombre} - stock: {med.stock} - Q {parseFloat(med.precio).toFixed(2)}</option>)}
+                                        </select>
                                         <input type="text" placeholder="Ej. Consulta General" className="form-input" value={item.descripcion} onChange={e => handleItemChange(item.id, 'descripcion', e.target.value)} style={{ padding: '0.4rem', fontSize: '0.85rem' }}/>
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <input type="number" placeholder="Cant" min="1" className="form-input" value={item.cantidad} onChange={e => handleItemChange(item.id, 'cantidad', e.target.value)} style={{ padding: '0.4rem', fontSize: '0.85rem' }}/>
                                     </div>
                                     <div style={{ flex: 1.5 }}>
-                                        <input type="number" placeholder="Precio $" min="0" step="0.01" className="form-input" value={item.precio_unitario} onChange={e => handleItemChange(item.id, 'precio_unitario', e.target.value)} style={{ padding: '0.4rem', fontSize: '0.85rem' }}/>
+                                        <input type="number" placeholder="Precio Q" min="0" step="0.01" disabled={!!item.id_medicamento} className="form-input" value={item.precio_unitario} onChange={e => handleItemChange(item.id, 'precio_unitario', e.target.value)} style={{ padding: '0.4rem', fontSize: '0.85rem' }}/>
                                     </div>
                                     <button onClick={() => handleRemoveRow(item.id)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: items.length === 1 ? '#cbd5e1' : '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: '0.4rem' }}>
                                         <Trash2 size={16}/>
@@ -275,9 +292,9 @@ const CreateFactura = () => {
                                         <tr key={it.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '0.75rem 0', fontSize: '0.95rem', color: '#1e293b' }}>{it.descripcion || '-'}</td>
                                             <td style={{ padding: '0.75rem 0', textAlign: 'center', fontSize: '0.95rem', color: '#475569' }}>{it.cantidad}</td>
-                                            <td style={{ padding: '0.75rem 0', textAlign: 'right', fontSize: '0.95rem', color: '#475569' }}>${parseFloat(it.precio_unitario||0).toFixed(2)}</td>
+                                            <td style={{ padding: '0.75rem 0', textAlign: 'right', fontSize: '0.95rem', color: '#475569' }}>Q {parseFloat(it.precio_unitario||0).toFixed(2)}</td>
                                             <td style={{ padding: '0.75rem 0', textAlign: 'right', fontSize: '0.95rem', color: '#0f172a', fontWeight: 500 }}>
-                                                ${(parseFloat(it.precio_unitario||0) * (it.cantidad||1)).toFixed(2)}
+                                                Q {(parseFloat(it.precio_unitario||0) * (it.cantidad||1)).toFixed(2)}
                                             </td>
                                         </tr>
                                     ))}
@@ -294,15 +311,15 @@ const CreateFactura = () => {
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: '#64748b' }}>
                                     <span>Subtotal:</span>
-                                    <span>${subtotal.toFixed(2)}</span>
+                                    <span>Q {subtotal.toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
-                                    <span>Impuestos (16%):</span>
-                                    <span>${impuestos.toFixed(2)}</span>
+                                    <span>IVA (12%):</span>
+                                    <span>Q {impuestos.toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', color: '#0f172a', fontSize: '1.25rem', fontWeight: 800 }}>
                                     <span>Total Final:</span>
-                                    <span>${total.toFixed(2)}</span>
+                                    <span>Q {total.toFixed(2)}</span>
                                 </div>
                                 {estado === 'Pagada' ? (
                                     <div style={{ background: '#dcfce7', color: '#166534', padding: '0.5rem', textAlign: 'center', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 700, marginTop: '1rem', border: '1px dashed #22c55e' }}>
@@ -353,10 +370,17 @@ const CreateFactura = () => {
                     min-height: 800px; /* para simular A4 aprox en pantalla */
                     display: flex;
                     flex-direction: column;
+                    line-height: 1.65;
                 }
-                .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #f1f5f9; padding-bottom: 2rem; margin-bottom: 2rem; }
-                .invoice-client { margin-bottom: 2.5rem; }
-                .invoice-totals { display: flex; margin-top: auto; padding-top: 2rem; }
+                .invoice-header { display: flex; justify-content: space-between; gap: 2rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 2.25rem; margin-bottom: 2.25rem; }
+                .invoice-header p { line-height: 1.8; }
+                .invoice-client { margin-bottom: 2.75rem; padding: 1.25rem 1.5rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+                .invoice-client p { line-height: 1.75; }
+                .invoice-items { margin-bottom: 2.5rem; }
+                .invoice-items th, .invoice-items td { line-height: 1.55; }
+                .invoice-items th:not(:last-child), .invoice-items td:not(:last-child) { padding-right: 1rem !important; }
+                .invoice-totals { display: flex; margin-top: auto; padding-top: 2.25rem; border-top: 1px solid #e2e8f0; gap: 2rem; }
+                .invoice-totals > div:last-child { min-width: 285px; }
 
                 /* Lógica de Impresión Nativa de Navegador */
                 @media print {
@@ -365,7 +389,7 @@ const CreateFactura = () => {
                     .no-print, .sidebar, .navbar { display: none !important; }
                     .page-container { margin: 0; padding: 0; max-width: 100%; }
                     .billing-layout { display: block; }
-                    .invoice-paper { box-shadow: none; padding: 2cm; margin: 0; width: 100%; border: none; min-height: auto; }
+                    .invoice-paper { box-shadow: none; padding: 2cm; margin: 0; width: 100%; border: none; min-height: auto; line-height: 1.55; }
                 }
                 
                 @media (max-width: 1024px) {

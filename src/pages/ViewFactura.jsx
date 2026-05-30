@@ -103,9 +103,9 @@ const ViewFactura = () => {
                                     <tr key={it.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                         <td style={{ padding: '0.75rem 0', fontSize: '0.95rem', color: '#1e293b' }}>{it.descripcion || '-'}</td>
                                         <td style={{ padding: '0.75rem 0', textAlign: 'center', fontSize: '0.95rem', color: '#475569' }}>{it.cantidad}</td>
-                                        <td style={{ padding: '0.75rem 0', textAlign: 'right', fontSize: '0.95rem', color: '#475569' }}>${parseFloat(it.precio_unitario||0).toFixed(2)}</td>
+                                        <td style={{ padding: '0.75rem 0', textAlign: 'right', fontSize: '0.95rem', color: '#475569' }}>Q {parseFloat(it.precio_unitario||0).toFixed(2)}</td>
                                         <td style={{ padding: '0.75rem 0', textAlign: 'right', fontSize: '0.95rem', color: '#0f172a', fontWeight: 500 }}>
-                                            ${(parseFloat(it.subtotal || (parseFloat(it.precio_unitario||0) * (it.cantidad||1)))).toFixed(2)}
+                                            Q {(parseFloat(it.subtotal || (parseFloat(it.precio_unitario||0) * (it.cantidad||1)))).toFixed(2)}
                                         </td>
                                     </tr>
                                 ))}
@@ -122,15 +122,15 @@ const ViewFactura = () => {
                         <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: '#64748b' }}>
                                 <span>Subtotal:</span>
-                                <span>${parseFloat(subtotal).toFixed(2)}</span>
+                                <span>Q {parseFloat(subtotal).toFixed(2)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
-                                <span>Impuestos (16%):</span>
-                                <span>${parseFloat(impuestos).toFixed(2)}</span>
+                                <span>IVA (12%):</span>
+                                <span>Q {parseFloat(impuestos).toFixed(2)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', color: '#0f172a', fontSize: '1.25rem', fontWeight: 800 }}>
                                 <span>Total Final:</span>
-                                <span>${parseFloat(total).toFixed(2)}</span>
+                                <span>Q {parseFloat(total).toFixed(2)}</span>
                             </div>
                             {estado === 'Pagada' ? (
                                 <div style={{ background: '#dcfce7', color: '#166534', padding: '0.5rem', textAlign: 'center', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 700, marginTop: '1rem', border: '1px dashed #22c55e' }}>
@@ -155,10 +155,17 @@ const ViewFactura = () => {
                     min-height: 800px;
                     display: flex;
                     flex-direction: column;
+                    line-height: 1.65;
                 }
-                .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #f1f5f9; padding-bottom: 2rem; margin-bottom: 2rem; }
-                .invoice-client { margin-bottom: 2.5rem; }
-                .invoice-totals { display: flex; margin-top: auto; padding-top: 2rem; }
+                .invoice-header { display: flex; justify-content: space-between; gap: 2rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 2.25rem; margin-bottom: 2.25rem; }
+                .invoice-header p { line-height: 1.8; }
+                .invoice-client { margin-bottom: 2.75rem; padding: 1.25rem 1.5rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+                .invoice-client p { line-height: 1.75; }
+                .invoice-items { margin-bottom: 2.5rem; }
+                .invoice-items th, .invoice-items td { line-height: 1.55; }
+                .invoice-items th:not(:last-child), .invoice-items td:not(:last-child) { padding-right: 1rem !important; }
+                .invoice-totals { display: flex; margin-top: auto; padding-top: 2.25rem; border-top: 1px solid #e2e8f0; gap: 2rem; }
+                .invoice-totals > div:last-child { min-width: 285px; }
 
                 /* Lógica de Impresión Nativa de Navegador */
                 @media print {
@@ -166,7 +173,7 @@ const ViewFactura = () => {
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
                     .no-print, .sidebar, .navbar { display: none !important; }
                     .page-container { margin: 0; padding: 0; max-width: 100%; }
-                    .invoice-paper { box-shadow: none; padding: 2cm; margin: 0; width: 100%; border: none; min-height: auto; }
+                    .invoice-paper { box-shadow: none; padding: 2cm; margin: 0; width: 100%; border: none; min-height: auto; line-height: 1.55; }
                 }
                 .spin { animation: spin 1s linear infinite; }
                 @keyframes spin { 100% { transform: rotate(360deg); } }
